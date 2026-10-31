@@ -1,0 +1,216 @@
+{
+  "dataset_version": "1.0",
+  "seed": 20261031,
+  "topology": {
+    "devices": [
+      {
+        "id": "INET_GW_01",
+        "label": "Internet gateway",
+        "type": "gateway",
+        "site": "Edge"
+      },
+      {
+        "id": "CAMPUS_CORE_01",
+        "label": "Campus core",
+        "type": "router",
+        "site": "Core"
+      },
+      {
+        "id": "HOSTEL_CORE_SW_01",
+        "label": "Hostel core switch",
+        "type": "switch",
+        "site": "Hostel"
+      },
+      {
+        "id": "HOSTEL_AP_07",
+        "label": "Hostel AP 07",
+        "type": "access_point",
+        "site": "Hostel"
+      },
+      {
+        "id": "DEPT_EDGE_SW_02",
+        "label": "Department edge",
+        "type": "switch",
+        "site": "Department"
+      },
+      {
+        "id": "CAMPUS_DNS_01",
+        "label": "DNS / DHCP",
+        "type": "service",
+        "site": "Services"
+      }
+    ],
+    "links": [
+      {
+        "source": "INET_GW_01",
+        "target": "CAMPUS_CORE_01",
+        "utilization_pct": 55
+      },
+      {
+        "source": "CAMPUS_CORE_01",
+        "target": "HOSTEL_CORE_SW_01",
+        "utilization_pct": 94
+      },
+      {
+        "source": "HOSTEL_CORE_SW_01",
+        "target": "HOSTEL_AP_07",
+        "utilization_pct": 68
+      },
+      {
+        "source": "CAMPUS_CORE_01",
+        "target": "DEPT_EDGE_SW_02",
+        "utilization_pct": 42
+      },
+      {
+        "source": "CAMPUS_CORE_01",
+        "target": "CAMPUS_DNS_01",
+        "utilization_pct": 18
+      }
+    ]
+  },
+  "records": [
+    {
+      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "device_id": "SW_CAMPUS_5",
+      "device_type": "switch",
+      "site": "Campus core",
+      "metrics": {
+        "cpu_utilization_pct": 16.05,
+        "link_utilization_pct": 42.01,
+        "packet_loss_pct": 0.0,
+        "latency_ms": 6.09,
+        "jitter_ms": 1.16,
+        "queue_drops": 0
+      },
+      "status": "Healthy",
+      "scenario": "normal"
+    },
+    {
+      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "device_id": "SW_CAMPUS_4",
+      "device_type": "switch",
+      "site": "Campus core",
+      "metrics": {
+        "cpu_utilization_pct": 54.28,
+        "link_utilization_pct": 75.78,
+        "packet_loss_pct": 0.25,
+        "latency_ms": 344.43,
+        "jitter_ms": 73.63,
+        "queue_drops": 48
+      },
+      "status": "Warning",
+      "scenario": "latency_spike"
+    },
+    {
+      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "device_id": "SW_CAMPUS_10",
+      "device_type": "switch",
+      "site": "Campus core",
+      "metrics": {
+        "cpu_utilization_pct": 99.9,
+        "link_utilization_pct": 100.0,
+        "packet_loss_pct": 15.49,
+        "latency_ms": 614.28,
+        "queue_drops": 8749,
+        "interface_errors": 388
+      },
+      "status": "Critical",
+      "scenario": "hardware_failure"
+    },
+    {
+      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "device_id": "HOSTEL_CORE_SW_01",
+      "device_type": "switch",
+      "site": "Hostel network",
+      "metrics": {
+        "cpu_utilization_pct": 14.57,
+        "link_utilization_pct": 94.0,
+        "packet_loss_pct": 3.2,
+        "latency_ms": 280.0,
+        "jitter_ms": 42.0,
+        "queue_drops": 160
+      },
+      "status": "Critical",
+      "scenario": "link_congestion"
+    },
+    {
+      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "device_id": "HOSTEL_AP_07",
+      "device_type": "access_point",
+      "site": "Hostel Wi-Fi",
+      "metrics": {
+        "cpu_utilization_pct": 15.99,
+        "link_utilization_pct": 21.26,
+        "packet_loss_pct": 8.5,
+        "latency_ms": 180.0,
+        "jitter_ms": 2.66,
+        "queue_drops": 0,
+        "signal_strength_dbm": -82.0,
+        "retransmissions_pct": 31.0
+      },
+      "status": "Warning",
+      "scenario": "weak_wifi"
+    },
+    {
+      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "device_id": "DEPT_EDGE_SW_02",
+      "device_type": "switch",
+      "site": "Engineering department",
+      "metrics": {
+        "cpu_utilization_pct": 18.29,
+        "link_utilization_pct": 30.91,
+        "packet_loss_pct": 6.0,
+        "latency_ms": 95.0,
+        "jitter_ms": 2.58,
+        "queue_drops": 0,
+        "interface_errors": 128
+      },
+      "status": "Warning",
+      "scenario": "interface_fault"
+    },
+    {
+      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "device_id": "CAMPUS_DNS_01",
+      "device_type": "service",
+      "site": "Campus services",
+      "metrics": {
+        "service_status": 0,
+        "latency_ms": 8.0,
+        "packet_loss_pct": 0.0
+      },
+      "status": "Warning",
+      "service": "DNS",
+      "scenario": "dns_dhcp_failure"
+    },
+    {
+      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "device_id": "HOSTEL_CORE_SW_01",
+      "device_type": "switch",
+      "site": "Hostel network",
+      "metrics": {
+        "cpu_utilization_pct": 29.82,
+        "link_utilization_pct": 94.0,
+        "packet_loss_pct": 3.2,
+        "jitter_ms": 42.0,
+        "queue_drops": 160,
+        "latency": 0.28
+      },
+      "status": "Critical",
+      "scenario": "interoperability_failure",
+      "schema_version": "telemetry_v9",
+      "units": {
+        "latency": "seconds"
+      }
+    },
+    {
+      "timestamp": "2026-10-31T17:12:51.549284+00:00",
+      "device_id": "BROKEN_NODE",
+      "metrics": {
+        "latency_ms": "fast",
+        "packet_loss_pct": 400
+      },
+      "status": "unknown",
+      "scenario": "malformed_input"
+    }
+  ]
+}
