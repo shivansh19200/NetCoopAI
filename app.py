@@ -62,11 +62,16 @@ def render_topology(topology: dict, highlighted: set[str]) -> str:
         label = escape(str(node.get("label", node.get("id", "Node")))[:22])
         node_id = escape(str(node.get("id", ""))[:20])
         cards.append(f'<g><rect x="{x}" y="{y}" width="112" height="43" rx="10" fill="#151517" stroke="{color}" stroke-width="{1.7 if is_hot else 1}"/><circle cx="{x+13}" cy="{y+14}" r="3.5" fill="{color}"/><text x="{x+23}" y="{y+17}" class="label">{label}</text><text x="{x+12}" y="{y+33}" class="id">{node_id}</text></g>')
-    return f'''<style>
-    .netcoop-topology-frame{{height:420px;min-height:420px;border:1px solid #29292c;border-radius:14px;background:radial-gradient(ellipse at 45% 45%,#1b100d,#080808 70%);overflow:auto;position:relative;font-family:Manrope,Arial,sans-serif;color:#f1f1f1}}
-    .netcoop-topology-frame svg{{display:block;width:100%;min-width:700px;height:400px}} .netcoop-topology-frame .label{{font-size:9px;fill:#eeeeef;font-weight:700}} .netcoop-topology-frame .id{{font-size:7px;fill:#85858b;font-family:monospace}} .netcoop-topology-frame .load{{font-size:9px;fill:#aaa;font-family:monospace}}
-    .netcoop-topology-frame .legend{{position:absolute;right:14px;top:13px;font-size:9px;color:#999;font-family:monospace;letter-spacing:.06em}} .netcoop-topology-frame .legend b{{color:#08bff5;font-weight:400}} .netcoop-topology-frame .key{{color:#ff623e!important}}
-    </style><div class="netcoop-topology-frame"><div class="legend"><b>●</b> PACKET FLOW &nbsp; <b class="key">●</b> ELEVATED</div><svg viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Network topology with animated packet flow">{''.join(lines)}{''.join(labels)}{''.join(packets)}{''.join(cards)}</svg></div>'''
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400" role="img" aria-label="Network topology with animated packet flow">
+    <title>Network topology</title>
+    <defs>
+      <radialGradient id="topology-bg" cx="45%" cy="45%"><stop offset="0%" stop-color="#1b100d"/><stop offset="70%" stop-color="#080808"/></radialGradient>
+      <style>.label{{font:700 9px Arial,sans-serif;fill:#eee}}.id{{font:7px monospace;fill:#85858b}}.load{{font:9px monospace;fill:#aaa}}</style>
+    </defs>
+    <rect x="1" y="1" width="798" height="398" rx="14" fill="url(#topology-bg)" stroke="#29292c"/>
+    <circle cx="610" cy="23" r="4" fill="#08bff5"/><text x="620" y="27" fill="#aaa" font-family="monospace" font-size="9">PACKET FLOW</text>
+    <circle cx="720" cy="23" r="4" fill="#ff623e"/><text x="730" y="27" fill="#aaa" font-family="monospace" font-size="9">ELEVATED</text>
+    {''.join(lines)}{''.join(labels)}{''.join(packets)}{''.join(cards)}</svg>'''
 
 
 st.set_page_config(page_title="NetCoop AI | Deterministic rule-based agents", page_icon="◈", layout="wide", initial_sidebar_state="expanded")
@@ -360,7 +365,7 @@ with left:
     warning_nodes = set(report["affected_devices"])
     metrics_to_highlight = {e["device_id"] for e in report["supporting_evidence"]}
     if topology.get("devices"):
-        st.html(render_topology(topology, warning_nodes | metrics_to_highlight), width="stretch")
+        st.image(render_topology(topology, warning_nodes | metrics_to_highlight), width="stretch", alt="Network topology with animated packet flow and highlighted fault signals")
     else:
         st.info("No usable topology was supplied. Add devices and links in the uploaded JSON to map the affected segment.")
     st.markdown('<div class="section-title">Telemetry snapshot</div>', unsafe_allow_html=True)
