@@ -37,22 +37,25 @@ def render_topology(topology: dict, highlighted: set[str]) -> str:
         kind = str(node.get("type", "device")).lower()
         base = positions.get(kind, (650, 300))
         same = sum(1 for n in nodes[:i] if n.get("type") == kind)
-        coords[node.get("id")] = (base[0], base[1] + same * 54)
+        coords[str(node.get("id", f"node_{i}"))] = (base[0], base[1] + same * 54)
     lines, packets, labels = [], [], []
     for i, link in enumerate(links):
-        a, b = coords.get(link.get("source")), coords.get(link.get("target"))
+        a, b = coords.get(str(link.get("source"))), coords.get(str(link.get("target")))
         if not a or not b: continue
         d = f"M {a[0]+52} {a[1]+21} C {(a[0]+b[0])/2} {a[1]+21}, {(a[0]+b[0])/2} {b[1]+21}, {b[0]} {b[1]+21}"
-        high = float(link.get("utilization_pct", 0) or 0) >= 85 or link.get("target") in highlighted
+        try: utilization = float(link.get("utilization_pct", 0) or 0)
+        except (TypeError, ValueError): utilization = 0.0
+        high = utilization >= 70 or str(link.get("target")) in highlighted
         color = "#ff623e" if high else "#08bff5"
         lines.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{2.5 if high else 1.5}"/>')
         packets.append(f'<circle r="3.5" fill="{"#ff9a39" if high else "#08bff5"}"><animateMotion dur="{3.2 + i*.65}s" begin="-{i*.7}s" repeatCount="indefinite" path="{d}"/></circle>')
         midx, midy = (a[0]+b[0]+52)/2, (a[1]+b[1]+42)/2 - 9
-        labels.append(f'<text x="{midx}" y="{midy}" class="load">{float(link.get("utilization_pct",0) or 0):.0f}%</text>')
+        labels.append(f'<text x="{midx}" y="{midy}" class="load">{utilization:.0f}%</text>')
     cards = []
     for node in nodes:
-        x, y = coords.get(node.get("id"), (0, 0))
-        is_hot = node.get("id") in highlighted
+        node_key = str(node.get("id", ""))
+        x, y = coords.get(node_key, (0, 0))
+        is_hot = node_key in highlighted
         color = "#ff623e" if is_hot else "#08bff5"
         label = escape(str(node.get("label", node.get("id", "Node")))[:22])
         node_id = escape(str(node.get("id", ""))[:20])
@@ -65,7 +68,7 @@ def render_topology(topology: dict, highlighted: set[str]) -> str:
     </style></head><body><div class="frame"><div class="legend"><b>●</b> LIVE FLOW &nbsp; <b class="key">●</b> ELEVATED</div><svg viewBox="0 0 800 340" preserveAspectRatio="xMidYMid meet">{''.join(lines)}{''.join(labels)}{''.join(packets)}{''.join(cards)}</svg></div></body></html>'''
 
 
-st.set_page_config(page_title="NetCoop AI | Network diagnostics", page_icon="◈", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="NetCoop AI | Deterministic rule-based agents", page_icon="◈", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
@@ -125,6 +128,13 @@ def cached_diagnosis(payload):
     return run_diagnosis(payload)
 
 
+def safe_diagnosis(payload):
+    try:
+        return cached_diagnosis(payload), None
+    except Exception as exc:
+        return None, f"We couldn't finish this diagnosis. Check the telemetry format and try again. ({type(exc).__name__})"
+
+
 @st.cache_resource(show_spinner=False)
 def get_workflow_store():
     return WorkflowStore(WORKFLOW_DB)
@@ -154,11 +164,12 @@ saved_checkpoints = workflow_store.list_checkpoints()
 with st.sidebar:
     st.markdown('<div class="eyebrow" style="text-align:left">NETCOOP / INCIDENT LAB</div>', unsafe_allow_html=True)
     st.markdown("## Scenario controls")
-    st.caption("Repeatable synthetic campus telemetry")
+    experience = st.radio("View", ["Beginner", "Expert"], horizontal=True, help="Beginner explains findings in plain language. Expert adds metric context and scoring detail.")
+    st.caption("Deterministic rule-based agents · repeatable synthetic telemetry")
     if "scenario" not in st.session_state:
         st.session_state["scenario"] = "link_congestion"
     scenario = st.selectbox("Demo scenario", SCENARIOS, format_func=lambda value: SCENARIO_LABELS.get(value, value), key="scenario", on_change=clear_active_checkpoint)
-    run_clicked = st.button("▶  Run agent diagnosis", type="primary", use_container_width=True)
+    run_clicked = st.button("▶  Run deterministic diagnosis", type="primary", use_container_width=True)
     st.divider()
     st.markdown("**Bring your own telemetry**")
     uploaded = st.file_uploader("Upload JSON or CSV", type=["json", "csv"], help="JSON accepts a record or {records, topology}; CSV accepts one device per row.")
@@ -166,10 +177,6 @@ with st.sidebar:
     st.markdown("**Dataset source**")
     st.caption("`data/sample_telemetry.json` · seed `20261031` · Colab-derived synthetic readings")
     st.caption("Switching scenarios selects a fixed fixture record; agents recompute findings from those measurements. This is not live campus telemetry.")
-    st.markdown("**Pause / resume**")
-    checkpoint_options = [""] + [item["checkpoint_id"] for item in saved_checkpoints]
-    st.selectbox("Saved checkpoints", checkpoint_options, key="resume_choice", format_func=lambda key: "Choose saved run" if not key else next((f"{item['checkpoint_id']} · {item['scenario']} · {item['phase']}" for item in saved_checkpoints if item["checkpoint_id"] == key), key))
-    st.button("Resume selected checkpoint", on_click=resume_checkpoint_callback, use_container_width=True, disabled=not bool(saved_checkpoints))
     st.caption("This prototype makes recommendations only. It does not connect to campus infrastructure or perform remediation.")
 
 if "last_scenario" not in st.session_state:
@@ -201,14 +208,18 @@ else:
     payload = {"records": [selected] if selected else [], "topology": demo["topology"]}
 
 active_checkpoint = st.session_state.get("active_checkpoint")
+diagnosis_error = None
 if active_checkpoint and uploaded is None and not input_error:
     payload = active_checkpoint["payload"]
     result = active_checkpoint["result"]
 elif input_error:
     st.error(input_error)
-    result = run_diagnosis({})
+    result, diagnosis_error = safe_diagnosis({})
 else:
-    result = cached_diagnosis(payload)
+    result, diagnosis_error = safe_diagnosis(payload)
+if result is None:
+    st.error(diagnosis_error or "We couldn't finish this diagnosis. Please review the input and retry.")
+    st.stop()
 report = result["report"]
 st.session_state["current_payload"] = payload
 st.session_state["current_result"] = result
@@ -219,14 +230,29 @@ observed_devices = ", ".join(r["device_id"] for r in result["records"]) or "Awai
 scenario_heading = "UPLOADED TELEMETRY" if uploaded is not None else SCENARIO_LABELS.get(scenario, scenario).upper()
 scenario_device = "UPLOADED DATA" if uploaded is not None else str(scenario_record.get("device_id", "SAMPLE RECORD"))
 diagnosed = report["status"] == "diagnosed"
-status_label = "PROBABLE CAUSE IDENTIFIED" if diagnosed else "MORE EVIDENCE NEEDED"
-cause_label = report["suspected_root_cause"] if diagnosed else "No reliable root cause yet"
-confidence_label = f"{report['confidence']:.0%}" if diagnosed else "—"
-confidence_note = "Evidence score" if diagnosed else "Insufficient validated signals"
+ambiguous = report["status"] == "ambiguous"
+status_label = "AMBIGUOUS" if ambiguous else "PROBABLE CAUSE IDENTIFIED" if diagnosed else "NOT ENOUGH EVIDENCE"
+cause_label = report["suspected_root_cause"]
+confidence_label = f"{report['confidence']:.0%}"
+confidence_word = "High" if report["confidence"] >= .75 else "Medium" if report["confidence"] >= .45 else "Low"
+confidence_note = f"{confidence_word} · deterministic rule-based agents"
+confidence_color = "#54d38a" if confidence_word == "High" else "#ffc35c" if confidence_word == "Medium" else "#ff625e"
 source_label = "Uploaded telemetry" if uploaded is not None else "Synthetic demo fixture"
 visible_evidence = [item for item in report["supporting_evidence"] if item["metric"] != "topology_scope"][:3]
+metric_help = {"latency_ms":"Time for a packet to travel, in milliseconds.","jitter_ms":"How much packet travel time varies.","queue_drops":"Packets discarded while waiting in a device queue.","packet_loss_pct":"Share of packets that did not arrive.","link_utilization_pct":"Share of link capacity currently in use.","signal_strength_dbm":"Radio signal strength; values closer to zero are stronger.","interface_errors":"Errors counted by a wired network port."}
+def evidence_sentence(item):
+    metric, value = item["metric"], item["value"]
+    if metric == "link_utilization_pct": return f"Link is {value:g}% full; normal is under 70%."
+    if metric == "cpu_utilization_pct": return f"Device CPU is {value:g}% busy; investigate above 85%."
+    if metric == "queue_drops": return f"Device dropped {value:g} packets from its queue; investigate above 50."
+    if metric == "packet_loss_pct": return f"{value:g}% of packets were lost; investigate above 2%."
+    if metric == "latency_ms": return f"Packets took {value:g} ms; investigate above 100 ms."
+    if metric == "signal_strength_dbm": return f"Wi-Fi signal was {value:g} dBm; weak below -75 dBm."
+    if metric == "retransmissions_pct": return f"{value:g}% of Wi-Fi packets needed retransmission."
+    if metric == "interface_errors": return f"Network port recorded {value:g} errors; investigate above 10."
+    return item["interpretation"]
 evidence_html = "".join(
-    f'<div class="diag-signal"><span>{escape(str(item["metric"]).replace("_", " "))}</span><b>{escape(str(item["value"]))} {escape(str(item["unit"]))}</b><small>{escape(str(item["device_id"]))}</small></div>'
+    f'<div class="diag-signal"><span>{escape(str(item["metric"]).replace("_", " "))}</span><b>{escape(evidence_sentence(item))}</b><small>{escape(str(item["device_id"]))}</small></div>'
     for item in visible_evidence
 ) or '<div class="diag-empty">No measurements passed the evidence threshold. Collect another time-aligned sample before assigning a cause.</div>'
 next_step = report["recommended_actions"][0] if report["recommended_actions"] else "Collect more time-aligned telemetry."
@@ -239,7 +265,7 @@ st.markdown(f'''<style>
 .diag-label{{color:#ff9a67;font:500 .66rem 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase}}
 .diag-cause{{color:#f5f5f6;font:800 clamp(1.55rem,3.4vw,2.6rem)/1.08 'Barlow Condensed',Impact,sans-serif;letter-spacing:.025em;margin:6px 0 0;overflow-wrap:anywhere}}
 .diag-confidence{{text-align:right;border-left:1px solid #303034;padding-left:18px}}
-.diag-confidence b{{display:block;color:#08bff5;font:800 2rem/1 'Barlow Condensed',sans-serif}}
+.diag-confidence b{{display:block;color:{confidence_color};font:800 2rem/1 'Barlow Condensed',sans-serif}}
 .diag-confidence small{{display:block;color:#8b8b91;font: .62rem 'DM Mono',monospace;margin-top:5px;text-transform:uppercase;letter-spacing:.07em}}
 .diag-evidence{{display:flex;gap:9px;flex-wrap:wrap;margin:5px 0 16px}}
 .diag-signal{{min-width:125px;flex:1;background:#101013;border:1px solid #29292d;border-radius:10px;padding:9px 11px}}
@@ -252,17 +278,21 @@ st.markdown(f'''<style>
 </style>
 <div class="diagnosis-panel">
   <div class="diag-top"><div class="diag-kicker">NETCOOP AI &nbsp; / &nbsp; INCIDENT BRIEF</div><div class="diag-status">● &nbsp; {status_label}</div></div>
-  <div class="diag-main"><div><div class="diag-label">{('LIKELY ROOT CAUSE' if diagnosed else 'DIAGNOSIS')}</div><div class="diag-cause">{escape(str(cause_label))}</div></div><div class="diag-confidence"><b>{confidence_label}</b><small>{confidence_note}</small></div></div>
+  <div class="diag-main"><div><div class="diag-label">WHAT'S WRONG</div><div class="diag-cause">{escape(str(cause_label))}</div></div><div class="diag-confidence"><b>{confidence_label}</b><small>HOW SURE · {confidence_note}</small></div></div>
   <div class="diag-evidence">{evidence_html}</div>
-  <div class="diag-bottom"><div><span class="diag-kicker">NEXT STEP</span><div class="diag-next">{escape(str(next_step))}</div></div><div style="text-align:right"><span class="diag-kicker">SCENARIO</span><div>{escape(scenario_heading)} · {escape(scenario_device)}</div><span class="diag-kicker">AFFECTED</span><div>{escape(observed_devices)}</div><span class="diag-kicker">SOURCE</span><div>{source_label}</div></div></div>
+  <div class="diag-bottom"><div><span class="diag-kicker">WHAT TO DO NEXT</span><div class="diag-next">{escape(str(next_step))}</div></div><div style="text-align:right"><span class="diag-kicker">SCENARIO</span><div>{escape(scenario_heading)} · {escape(scenario_device)}</div><span class="diag-kicker">AFFECTED</span><div>{escape(observed_devices)}</div><span class="diag-kicker">SOURCE</span><div>{source_label}</div></div></div>
 </div>''', unsafe_allow_html=True)
-with st.expander("What is this scenario using?", expanded=False):
-    st.caption("These are generated demo readings stored in data/sample_telemetry.json. Their metric values are repeatable for seed 20261031. The selected record is passed through the agents and correlator when selected. The agent rules and action wording are deterministic; no LLM or live network feed is connected.")
-    st.download_button("Download the full synthetic dataset", data=json.dumps(demo, indent=2), file_name="netcoop_synthetic_telemetry.json", mime="application/json")
-    if uploaded is None and scenario_record:
-        st.markdown("**Selected fixture record**")
-        st.json(scenario_record, expanded=True)
-
+if result["warnings"]:
+    friendly_warnings = []
+    for warning in result["warnings"]:
+        lower = warning.lower()
+        if "latency looked like seconds" in lower:
+            friendly_warnings.append("Latency looked like seconds, so we ignored it; confidence is lower.")
+        elif "0-1 fraction" in lower:
+            friendly_warnings.append("A percentage looked like a 0-1 fraction, so we ignored it; confidence is lower.")
+        elif "topology" in lower:
+            friendly_warnings.append("Some topology details were missing or skipped, so affected network scope may be limited.")
+    for note in dict.fromkeys(friendly_warnings): st.info(note)
 records = result["records"]
 all_metrics = [r["metrics"] for r in records]
 def mean_metric(name):
@@ -279,16 +309,11 @@ def metric_card(label, value, note, suffix=""):
     st.markdown(f'<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value">{value_text}</div><div class="metric-note">{note}</div></div>', unsafe_allow_html=True)
 
 cols = st.columns(5)
-with cols[0]: metric_card("Root cause", "Unknown" if report["status"] != "diagnosed" else report["suspected_root_cause"].replace(" ", "\u00a0"), report["status"].replace("_", " ").title())
+with cols[0]: metric_card("Root cause", report["suspected_root_cause"].replace(" ", "\u00a0"), report["status"].replace("_", " ").title())
 with cols[1]: metric_card("Confidence", report["confidence"] * 100, "Rule-based evidence score", "%")
 with cols[2]: metric_card("Latency", mean_metric("latency_ms"), "Mean of available devices", " ms")
 with cols[3]: metric_card("Packet loss", mean_metric("packet_loss_pct"), "Mean of available devices", "%")
 with cols[4]: metric_card("Agent messages", len(result["agent_messages"]), "Structured handoffs")
-
-if result["warnings"]:
-    with st.expander(f"Input validation · {len(result['warnings'])} warning(s)", expanded=True):
-        for warning in result["warnings"]:
-            st.warning(warning)
 
 left, right = st.columns([1.65, 1], gap="large")
 with left:
@@ -301,7 +326,8 @@ with left:
     table = []
     for row in records:
         table.append({"Device": row["device_id"], "Type": row["device_type"], "Status": row["status"], **row["metrics"]})
-    st.dataframe(pd.DataFrame(table), use_container_width=True, hide_index=True)
+    help_columns = {name: st.column_config.NumberColumn(name, help=metric_help[name], format="%.1f") for name in metric_help if any(name in row for row in table)} if experience == "Expert" else {}
+    st.dataframe(pd.DataFrame(table), use_container_width=True, hide_index=True, column_config=help_columns)
 
 with right:
     st.markdown('<div class="section-title">Diagnostic report</div><div class="section-note">Evidence-ranked recommendation for operator review</div>', unsafe_allow_html=True)
@@ -320,7 +346,7 @@ with right:
     for action in report["recommended_actions"]:
         st.markdown(f"- {action}")
     if report["alternative_causes"]:
-        with st.expander("Alternative explanations"):
+        with st.expander("Other possible causes"):
             for alternative in report["alternative_causes"]:
                 st.write("• " + alternative)
     if report["limitations"]:
@@ -329,32 +355,48 @@ with right:
                 st.write("• " + limitation)
 
 st.divider()
-st.markdown('<div class="section-title">Agent collaboration trace</div><div class="section-note">Three telemetry specialists → evidence correlation → unified report</div>', unsafe_allow_html=True)
-agents = [
+with st.expander("Technical details", expanded=False):
+    st.caption("System: deterministic rule-based agents. Demo readings are stored in data/sample_telemetry.json and generated with seed 20261031.")
+    st.download_button("Download the full synthetic dataset", data=json.dumps(demo, indent=2), file_name="netcoop_synthetic_telemetry.json", mime="application/json")
+    if uploaded is None and scenario_record:
+        st.markdown("**Selected fixture record**")
+        st.json(scenario_record, expanded=False)
+    if experience == "Expert":
+        st.markdown("**Metric guide**")
+        for metric, explanation in metric_help.items(): st.caption(f"{metric}: {explanation}")
+    st.markdown('<div class="section-title">Agent collaboration trace</div><div class="section-note">Deterministic rule-based agents → evidence correlation → unified report</div>', unsafe_allow_html=True)
+    agents = [
     ("Performance", "Latency · loss · jitter · link load"),
     ("Infrastructure", "CPU · memory · queues · interfaces"),
     ("Connectivity", "Topology · scope · services"),
     ("Fault correlation", "Evidence families · competing causes"),
     ("Reporting", "Confidence · actions · JSON output"),
 ]
-agent_cols = st.columns(5)
-for col, (name, subtitle) in zip(agent_cols, agents):
-    with col:
-        st.markdown(f'<div class="agent-chip"><strong>◉ &nbsp;{name}</strong><small>{subtitle}</small></div>', unsafe_allow_html=True)
-with st.expander("Inspect structured agent messages"):
+    agent_cols = st.columns(5)
+    for col, (name, subtitle) in zip(agent_cols, agents):
+        with col:
+            st.markdown(f'<div class="agent-chip"><strong>◉ &nbsp;{name}</strong><small>{subtitle}</small></div>', unsafe_allow_html=True)
+    st.markdown("**Structured agent messages**")
     for message in result["agent_messages"]:
         st.markdown(f"**{message['source_agent']}** → `{message['target_agent']}` · `{message['status']}`")
         st.json(message, expanded=False)
-if result["ranked_candidates"]:
-    with st.expander("Correlation scoring"):
-        st.caption("Up to 0.30 per independent family plus up to 0.10 for corroboration. Requires score ≥ 0.42 and two evidence families; capped at 0.95.")
-        st.dataframe(pd.DataFrame([{"Candidate": c["cause"], "Score": c["score"], "Families": ", ".join(c["families"]), "Signals": len(c["evidence"])} for c in result["ranked_candidates"]]), use_container_width=True, hide_index=True)
+    if result["ranked_candidates"]:
+        st.markdown("**Confidence breakdown and other possible causes**")
+        st.json(report["confidence_breakdown"], expanded=False)
+        st.dataframe(pd.DataFrame([{"Candidate": c["cause"], "Score": c["score"], "Signals": c["distinct_signals"]} for c in result["ranked_candidates"]]), use_container_width=True, hide_index=True)
 
-st.download_button("Download diagnostic report · JSON", data=json.dumps(report, indent=2), file_name=f"{report['incident_id'].lower()}_report.json", mime="application/json")
-st.caption("NetCoop AI prototype · synthetic data · remediation controls only record a simulation; they never contact network devices.")
+    st.download_button("Download diagnostic report · JSON", data=json.dumps(report, indent=2), file_name=f"{report['incident_id'].lower()}_report.json", mime="application/json")
+    st.caption("NetCoop AI · deterministic rule-based agents · synthetic telemetry.")
+    st.markdown("**Schema warnings**")
+    if result["warnings"]:
+        for warning in result["warnings"]: st.warning(warning)
+    else: st.caption("No input warnings.")
+    st.caption("Optional MCP server: run `mcp run mcp_server.py` for local tool access.")
 
-with st.expander("Human review · pause/resume · remediation simulation", expanded=False):
-    st.markdown("**Human-in-the-loop review**")
+    st.markdown("**Human review · pause/resume · remediation simulation**")
+    checkpoint_options = [""] + [item["checkpoint_id"] for item in saved_checkpoints]
+    st.selectbox("Saved checkpoints", checkpoint_options, key="resume_choice", format_func=lambda key: "Choose saved run" if not key else next((f"{item['checkpoint_id']} · {item['scenario']} · {item['phase']}" for item in saved_checkpoints if item["checkpoint_id"] == key), key))
+    st.button("Resume selected checkpoint", on_click=resume_checkpoint_callback, use_container_width=True, disabled=not bool(saved_checkpoints))
     decision = st.radio("Operator decision", ["Approve recommendation for manual follow-up", "Request more telemetry", "Reject this diagnosis"], key="operator_decision")
     review_note = st.text_area("Review note", key="operator_note", placeholder="Add context for the next operator")
     if st.button("Save human review", key="save_review"):
@@ -373,22 +415,15 @@ with st.expander("Human review · pause/resume · remediation simulation", expan
 
     st.markdown("**Workflow checkpoint**")
     if st.button("Pause and save this run", key="pause_workflow"):
-        checkpoint_id = workflow_store.save_checkpoint(
-            st.session_state.get("current_scenario", scenario),
-            st.session_state.get("current_payload"),
-            st.session_state.get("current_result"),
-            phase="paused",
-        )
+        checkpoint_id = workflow_store.save_checkpoint(st.session_state.get("current_scenario", scenario), st.session_state.get("current_payload"), st.session_state.get("current_result"), phase="paused")
         st.session_state["checkpoint_notice"] = checkpoint_id
         st.rerun()
     if st.session_state.get("checkpoint_notice"):
-        st.success(f"Paused workflow saved: {st.session_state['checkpoint_notice']}. Resume it from the sidebar.")
+        st.success(f"Paused workflow saved: {st.session_state['checkpoint_notice']}. Resume it from the controls above.")
 
     events = workflow_store.recent_events()
     if events["reviews"] or events["simulations"]:
         st.markdown("**Recent persisted review and simulation log**")
-        for item in events["reviews"]:
-            st.write(f"{item['created_at']} · Review {item['review_id']} · {item['decision']}")
-        for item in events["simulations"]:
-            st.write(f"{item['created_at']} · Simulation {item['simulation_id']} · {item['action']} · {item['result']}")
+        for item in events["reviews"]: st.write(f"{item['created_at']} · Review {item['review_id']} · {item['decision']}")
+        for item in events["simulations"]: st.write(f"{item['created_at']} · Simulation {item['simulation_id']} · {item['action']} · {item['result']}")
 

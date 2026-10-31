@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netcoop.local/schema/agent_message_v1_and_report.json",
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "required": ["device_id", "metric", "value", "unit", "interpretation"],
+      "properties": {
+        "device_id": {"type": "string"},
+        "metric": {"type": "string"},
+        "value": {},
+        "unit": {"type": "string"},
+        "interpretation": {"type": "string"},
+        "source_message_id": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "agent_message_v1": {
+      "type": "object",
+      "required": ["schema_version", "message_id", "timestamp", "source_agent", "target_agent", "status", "findings", "evidence", "limitations"],
+      "properties": {
+        "schema_version": {"const": "agent_message_v1"},
+        "message_id": {"type": "string", "minLength": 1},
+        "timestamp": {"type": "string", "format": "date-time"},
+        "source_agent": {"type": "string", "minLength": 1},
+        "target_agent": {"type": "string", "minLength": 1},
+        "status": {"enum": ["ok", "warning", "error"]},
+        "findings": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+        "limitations": {"type": "array", "items": {"type": "string"}},
+        "received_message_ids": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "ranked_candidate": {
+      "type": "object",
+      "required": ["cause", "score", "families", "evidence"],
+      "properties": {
+        "cause": {"type": "string"},
+        "score": {"type": "number", "minimum": 0, "maximum": 0.95},
+        "families": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+      },
+      "additionalProperties": true
+    },
+    "conflict": {
+      "type": "object",
+      "required": ["agents", "claims", "resolution_rule"],
+      "properties": {
+        "agents": {"type": "array", "items": {"type": "string"}},
+        "claims": {"type": "array", "items": {"type": "string"}},
+        "resolution_rule": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "diagnostic_report": {
+      "type": "object",
+      "required": ["incident_id", "status", "suspected_root_cause", "confidence", "affected_devices", "supporting_evidence", "alternative_causes", "tied_candidates", "ranked_candidates", "recommended_actions", "evidence_sources", "limitations", "conflicts", "confidence_breakdown"],
+      "properties": {
+        "incident_id": {"type": "string"},
+        "status": {"enum": ["diagnosed", "ambiguous", "insufficient_evidence"]},
+        "suspected_root_cause": {"type": "string"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 0.95},
+        "affected_devices": {"type": "array", "items": {"type": "string"}},
+        "supporting_evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+        "alternative_causes": {"type": "array", "items": {"type": "string"}},
+        "tied_candidates": {"type": "array", "items": {"type": "string"}},
+        "ranked_candidates": {"type": "array", "items": {"$ref": "#/$defs/ranked_candidate"}},
+        "recommended_actions": {"type": "array", "items": {"type": "string"}},
+        "evidence_sources": {"type": "array", "items": {"type": "string"}},
+        "limitations": {"type": "array", "items": {"type": "string"}},
+        "conflicts": {"type": "array", "items": {"$ref": "#/$defs/conflict"}},
+        "confidence_breakdown": {"type": "object"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

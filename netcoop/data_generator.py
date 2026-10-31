@@ -60,6 +60,9 @@ def generate_scenario(name: str, rng: random.Random) -> dict:
     """Extend the Colab baseline for the scenarios suggested in the PDF."""
     if name in {"normal", "latency_spike", "hardware_failure"}:
         record = generate_telemetry(name, rng)
+        if name == "latency_spike":
+            record["metrics"]["link_utilization_pct"] = 58.0
+            record["metrics"]["packet_loss_pct"] = 3.4
     elif name == "link_congestion":
         record = generate_telemetry("normal", rng)
         record["device_id"], record["device_type"], record["site"] = "HOSTEL_CORE_SW_01", "switch", "Hostel network"
@@ -116,7 +119,7 @@ def build_demo_data(seed: int = SEED) -> dict:
         ],
         "links": [
             {"source": "INET_GW_01", "target": "CAMPUS_CORE_01", "utilization_pct": 55},
-            {"source": "CAMPUS_CORE_01", "target": "HOSTEL_CORE_SW_01", "utilization_pct": 94},
+            {"source": "CAMPUS_CORE_01", "target": "HOSTEL_CORE_SW_01", "utilization_pct": 62},
             {"source": "HOSTEL_CORE_SW_01", "target": "HOSTEL_AP_07", "utilization_pct": 68},
             {"source": "CAMPUS_CORE_01", "target": "DEPT_EDGE_SW_02", "utilization_pct": 42},
             {"source": "CAMPUS_CORE_01", "target": "CAMPUS_DNS_01", "utilization_pct": 18},

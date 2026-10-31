@@ -49,7 +49,7 @@
       {
         "source": "CAMPUS_CORE_01",
         "target": "HOSTEL_CORE_SW_01",
-        "utilization_pct": 94
+        "utilization_pct": 62
       },
       {
         "source": "HOSTEL_CORE_SW_01",
@@ -70,7 +70,7 @@
   },
   "records": [
     {
-      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "timestamp": "2026-10-31T18:03:43.057617Z",
       "device_id": "SW_CAMPUS_5",
       "device_type": "switch",
       "site": "Campus core",
@@ -86,14 +86,14 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "timestamp": "2026-10-31T18:03:43.057617Z",
       "device_id": "SW_CAMPUS_4",
       "device_type": "switch",
       "site": "Campus core",
       "metrics": {
         "cpu_utilization_pct": 54.28,
-        "link_utilization_pct": 75.78,
-        "packet_loss_pct": 0.25,
+        "link_utilization_pct": 58.0,
+        "packet_loss_pct": 3.4,
         "latency_ms": 344.43,
         "jitter_ms": 73.63,
         "queue_drops": 48
@@ -102,7 +102,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "timestamp": "2026-10-31T18:03:43.057617Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus core",
@@ -118,7 +118,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "timestamp": "2026-10-31T18:03:43.057617Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -134,7 +134,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "timestamp": "2026-10-31T18:03:43.057617Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -152,7 +152,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "timestamp": "2026-10-31T18:03:43.057617Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -169,7 +169,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "timestamp": "2026-10-31T18:03:43.057617Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -183,7 +183,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-10-31T17:12:51.549284Z",
+      "timestamp": "2026-10-31T18:03:43.057617Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -203,7 +203,7 @@
       }
     },
     {
-      "timestamp": "2026-10-31T17:12:51.549284+00:00",
+      "timestamp": "2026-10-31T18:03:43.057617+00:00",
       "device_id": "BROKEN_NODE",
       "metrics": {
         "latency_ms": "fast",

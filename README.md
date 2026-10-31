@@ -1,23 +1,29 @@
 # NetCoop AI | Network diagnostics
 
-A runnable Streamlit dashboard for topology-aware, multi-agent network fault diagnosis. The demo uses synthetic telemetry from the Colab generator linked in the hackathon brief; no production network is contacted or modified.
+A runnable Streamlit dashboard for topology-aware network diagnosis by **deterministic rule-based agents**. The demo uses synthetic telemetry from the Colab generator linked in the hackathon brief; no production network is contacted or modified.
 
 The dashboard's visual direction follows Garam Prix's high-contrast black canvas, oversized glowing hero title, live-status capsule, split scorecard, and bold cyan section headings. It uses NetCoop-specific labels, colors, and content rather than the site's sports assets.
 
 ## Quick start
 
-1. Install Python 3.11 or later.
-2. From this folder, create an environment and install the packages:
+Install Python 3.11 or later, then run:
 
    ```bash
    python -m venv .venv
    # Windows: .venv\Scripts\activate
    # macOS/Linux: source .venv/bin/activate
-   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    streamlit run app.py
    ```
 
-3. Choose a scenario in the left sidebar. The topology animates packet flow; the agent run generates a diagnosis and downloadable JSON report.
+Choose a scenario in the left sidebar. The topology animates packet flow and the dashboard reports a diagnosis. `make demo` regenerates the fixture and launches the dashboard; `make test` runs regression tests.
+
+## Two-minute quick start
+
+1. Create an environment and install dependencies: `python -m venv .venv && pip install -r requirements-dev.txt` (activate `.venv` on Windows with `.venv\\Scripts\\activate`).
+2. Run `make demo` (Windows users can run `python -m netcoop.data_generator --output data/sample_telemetry.json` followed by `streamlit run app.py` if Make is unavailable).
+3. Select **Link congestion** and inspect the highlighted path, plain-language evidence, and recommended check.
+4. Select **Interoperability failure** to see schema and unit warnings and a lower confidence score.
 
 ## What is included
 
@@ -32,13 +38,34 @@ The dashboard's visual direction follows Garam Prix's high-contrast black canvas
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    UI[Streamlit dashboard] --> N[Input normalization and schema checks]
+    N --> P[Performance agent]
+    N --> I[Infrastructure agent]
+    N --> C[Connectivity agent]
+    P --> R[Correlation agent]
+    I --> R
+    C --> R
+    R --> O[Unified diagnostic report]
+    O --> UI
+    UI --> W[Optional review, simulation, pause/resume]
+```
+
 `app.py` loads a selected sample or uploaded JSON/CSV, runs the orchestrator, and renders the report, topology, agent trace, and telemetry. `netcoop/agents.py` contains five deterministic specialist agents. Each sends an `agent_message_v1` envelope with `message_id`, `timestamp`, `source_agent`, `target_agent`, `schema_version`, `status`, `findings`, `evidence`, and `limitations`. Measurements use the field names and units from the synthetic data (`latency_ms`, `packet_loss_pct`, `link_utilization_pct`, `cpu_utilization_pct`, `queue_drops`, `interface_errors`, `jitter_ms`, and `signal_strength_dbm`).
 
 The orchestrator collects the specialist messages before invoking the correlation agent. Correlation ranks candidate causes from independent evidence families, caps confidence when evidence is sparse or conflicting, and returns `insufficient_evidence` if the score is below the documented threshold. The reporting agent creates a report with the fields required in the challenge: incident ID, status, suspected cause, confidence, affected devices, supporting evidence, alternative causes, recommended actions, evidence sources, and limitations. Findings are recommendations for an operator; remediation simulation only records a preview and never executes network commands.
 
-## Confidence method
+## Deterministic rule-based agents and confidence
 
-The rule-based correlator scores candidate causes by independent evidence families (performance, infrastructure, topology/service scope). Each matching family contributes up to 0.30; corroborating specific signals add up to 0.10, with a 0.95 cap. Confidence is therefore an evidence score, not a calibrated probability. A diagnosis requires a top score of 0.42 and at least two evidence items from distinct agent families. Otherwise the report says evidence is insufficient and lists what to collect next.
+Confidence is an evidence score, not a calibrated probability. Duplicate records are removed before scoring, and corroboration is counted by distinct device and metric. A single evidence family can diagnose when at least three independent signals agree; that confidence is capped at 0.55. Close candidates within 0.05 are reported as ambiguous. Full penalty definitions and scenario expectations are in [`docs/ACCURACY.md`](docs/ACCURACY.md).
+
+| Confidence penalty | Amount |
+|---|---:|
+| Unsupported schema version | -0.15 |
+| Each ignored metric | -0.05 (maximum -0.20) |
+| Device absent from topology | -0.10 |
+| No usable topology | -0.10 |
 
 ## Input and error handling
 
@@ -50,7 +77,7 @@ CSV columns: `timestamp`, `device_id`, `device_type`, `site`, `status`, followed
 
 The [Colab notebook linked in the hackathon brief](https://colab.research.google.com/drive/1xFOtO114qWICAxGisK9K6oOHoOxwvGi1) is included as `colab_generator.ipynb`; open it in Google Colab and run its single cell to generate baseline telemetry. The local dashboard is reproducible without Colab and does not need an API key. Run `python -m netcoop.data_generator --output data/sample_telemetry.json` to regenerate the bundled demo fixture. The metric values use a fixed seed (`20261031`) for repeatable scenarios. See [`docs/SYNTHETIC_DATA.md`](docs/SYNTHETIC_DATA.md) for the generation method and ranges.
 
-The dashboard does not replay a pre-written report. `data/sample_telemetry.json` contains fixed synthetic readings for each demo scenario. Selecting a scenario passes its record to the agents and correlator, which calculate findings, confidence, affected devices, and recommendations from the measurements. The rule thresholds and recommendation wording are deterministic code, not a trained model or live LLM response. Selecting the same fixture again produces the same diagnosis; use an uploaded telemetry file to analyze different data.
+The dashboard does not replay a pre-written report. `data/sample_telemetry.json` contains fixed synthetic readings for each demo scenario. Selecting a scenario passes its record to the agents and correlator, which calculate findings, confidence, affected devices, and recommendations from the measurements. The system is labeled **deterministic rule-based agents**. Selecting the same fixture again produces the same diagnosis; use an uploaded telemetry file to analyze different data.
 
 ## Optional workflow features
 
@@ -75,6 +102,8 @@ Scenarios are synthetic and are not campus measurements. DNS/DHCP scenarios mode
 - `docs/AGENT_PROTOCOL.md` — message contract, field definitions, units, and failure semantics.
 - `docs/REQUIREMENTS_MATRIX.md` — implementation map for the hackathon checklist.
 - `docs/SYNTHETIC_DATA.md` — generation steps, Colab ranges, and scenario extensions.
+- `docs/schema.json` — JSON Schema for agent messages and diagnostic reports.
+- `docs/ACCURACY.md` — expected scenario verdicts and confidence penalties.
 - `colab_generator.ipynb` — source notebook linked from the PDF.
 
 ## Demo walkthrough

@@ -1,17 +1,18 @@
 # Agent message protocol: `agent_message_v1`
 
-Every message is a JSON object with this envelope:
+The system is labeled **deterministic rule-based agents**. Every message is an `agent_message_v1` JSON object and is validated against [`schema.json`](schema.json) both when created and when received. A malformed message is rejected with a clear error; diagnosis continues with the remaining valid messages.
 
 | Field | Type | Meaning |
 |---|---|---|
 | `schema_version` | string | Must be `agent_message_v1`. |
-| `message_id` | string | Unique message identifier. |
+| `message_id` | string | Stable identifier used to correlate a run's handoffs. |
 | `timestamp` | ISO 8601 UTC string | Message creation time. |
 | `source_agent` | string | Sending specialist. |
-| `target_agent` | string | Intended recipient (`orchestrator` or a specialist). |
+| `target_agent` | string | Intended recipient. Specialist messages target `correlation_agent`; its result targets `reporting_agent`. |
 | `status` | `ok`, `warning`, or `error` | Processing result. |
 | `findings` | array of strings | Concise interpretations, not raw telemetry. |
-| `evidence` | array of objects | `{device_id, metric, value, unit, interpretation}`. |
+| `evidence` | array of objects | `{device_id, metric, value, unit, interpretation}`; report evidence cites `source_message_id`. |
+| `received_message_ids` | array of strings | IDs of upstream messages consumed by a directed handoff. |
 | `limitations` | array of strings | Missing or incompatible input that constrains interpretation. |
 
 Canonical fields and units: `latency_ms` (ms), `jitter_ms` (ms), `packet_loss_pct` (%), `throughput_mbps` (Mbps), `bandwidth_mbps` (Mbps), `link_utilization_pct` (%), `cpu_utilization_pct` (%), `memory_utilization_pct` (%), `queue_drops` (count), `interface_errors` (count), `signal_strength_dbm` (dBm), `retransmissions_pct` (%), `service_status` (categorical), `device_status` (categorical).
@@ -24,7 +25,7 @@ Canonical fields and units: `latency_ms` (ms), `jitter_ms` (ms), `packet_loss_pc
 4. `correlation_agent` combines the preceding structured messages, ranks causes, calculates an evidence score, and may return insufficient evidence.
 5. `reporting_agent` converts the correlated result into the challenge's unified JSON schema.
 
-All messages are retained in order in the dashboard trace. Invalid schema versions, unrecognized units, and out-of-range metrics produce validation warnings. Unknown measurements are discarded; absent data is not interpreted as healthy.
+Messages are retained in order in the dashboard trace. Correlation receives only the three specialist messages and records their IDs. The report cites the originating message ID for each supporting evidence item. Invalid telemetry schema versions, unrecognized units, and out-of-range metrics produce warnings. Unknown measurements are discarded; absent data is not interpreted as healthy.
 
 ## MCP adapter
 
@@ -32,4 +33,4 @@ All messages are retained in order in the dashboard trace. Invalid schema versio
 
 ## Confidence score
 
-For a candidate cause, each independent evidence family contributes up to 0.30, then up to 0.10 is added for corroborating signals. Scores are capped at 0.95. The score is a rule-based evidence score, not a calibrated probability. A cause is reported only when its score is at least 0.42 and at least two independent agent families support it. Otherwise, status is `insufficient_evidence`.
+Confidence is a deterministic evidence score, not a calibrated probability. Repeated `(device_id, timestamp, metrics)` records are deduplicated, and corroboration counts distinct devices and metrics. At least three distinct signals can support a diagnosis from one family, capped at 0.55. If two candidate scores are within 0.05, status is `ambiguous` and the report recommends a discriminating measurement. Confidence penalties and fixed-seed scenario results are documented in [`ACCURACY.md`](ACCURACY.md).
