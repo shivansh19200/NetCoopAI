@@ -53,6 +53,19 @@
       },
       "additionalProperties": false
     },
+    "model_review": {
+      "type": "object",
+      "required": ["status", "agrees_with_rule_verdict", "summary", "alternative_explanations", "recommended_checks", "uncertainty"],
+      "properties": {
+        "status": {"enum": ["reviewed", "unavailable"]},
+        "agrees_with_rule_verdict": {"type": "boolean"},
+        "summary": {"type": "string"},
+        "alternative_explanations": {"type": "array", "items": {"type": "string"}},
+        "recommended_checks": {"type": "array", "items": {"type": "string"}},
+        "uncertainty": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
     "diagnostic_report": {
       "type": "object",
       "required": ["incident_id", "status", "suspected_root_cause", "confidence", "affected_devices", "supporting_evidence", "alternative_causes", "tied_candidates", "ranked_candidates", "recommended_actions", "evidence_sources", "limitations", "conflicts", "confidence_breakdown"],
@@ -70,7 +83,8 @@
         "evidence_sources": {"type": "array", "items": {"type": "string"}},
         "limitations": {"type": "array", "items": {"type": "string"}},
         "conflicts": {"type": "array", "items": {"$ref": "#/$defs/conflict"}},
-        "confidence_breakdown": {"type": "object"}
+        "confidence_breakdown": {"type": "object"},
+        "model_review": {"$ref": "#/$defs/model_review"}
       },
       "additionalProperties": true
     }

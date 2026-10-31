@@ -32,7 +32,7 @@ Choose a scenario in the left sidebar. The topology animates packet flow and the
 - A topology diagram with continuously animated packets and a highlighted affected segment.
 - Sample data for healthy operation, latency spike, hardware failure, link congestion, weak Wi-Fi, interface fault, DNS/DHCP service issue, and an interoperability failure.
 - A malformed telemetry case, explicit missing-evidence handling, and structured diagnostic report export.
-- Reproducible acceptance checks under `tests/` (`python -m unittest discover -s tests -v`).
+- Reproducible acceptance checks under `tests/` (`make test` or `python -m pytest -q`).
 - Optional MCP server (`mcp_server.py`) with scenario/report tools and protocol/sample dataset resources.
 - Human review capture, SQLite pause/resume checkpoints, and a remediation simulation log that never changes a device.
 
@@ -49,6 +49,8 @@ flowchart LR
     C --> R
     R --> O[Unified diagnostic report]
     O --> UI
+    O -. optional advisory .-> G[Groq model reviewer]
+    G -. verdict remains unchanged .-> O
     UI --> W[Optional review, simulation, pause/resume]
 ```
 
@@ -77,7 +79,17 @@ CSV columns: `timestamp`, `device_id`, `device_type`, `site`, `status`, followed
 
 The [Colab notebook linked in the hackathon brief](https://colab.research.google.com/drive/1xFOtO114qWICAxGisK9K6oOHoOxwvGi1) is included as `colab_generator.ipynb`; open it in Google Colab and run its single cell to generate baseline telemetry. The local dashboard is reproducible without Colab and does not need an API key. Run `python -m netcoop.data_generator --output data/sample_telemetry.json` to regenerate the bundled demo fixture. The metric values use a fixed seed (`20261031`) for repeatable scenarios. See [`docs/SYNTHETIC_DATA.md`](docs/SYNTHETIC_DATA.md) for the generation method and ranges.
 
-The dashboard does not replay a pre-written report. `data/sample_telemetry.json` contains fixed synthetic readings for each demo scenario. Selecting a scenario passes its record to the agents and correlator, which calculate findings, confidence, affected devices, and recommendations from the measurements. The system is labeled **deterministic rule-based agents**. Selecting the same fixture again produces the same diagnosis; use an uploaded telemetry file to analyze different data.
+### Optional Groq model review
+
+Install `requirements.txt`, set `GROQ_API_KEY` as an environment variable (or as a Streamlit secret with the same name), enable **Add Groq model reviewer**, and click **Review findings with Groq**. The reviewer uses Groq's [structured JSON outputs](https://console.groq.com/docs/structured-outputs) with `openai/gpt-oss-20b`, currently listed as supporting strict schema output in Groq's [model documentation](https://console.groq.com/docs/models). It receives the diagnostic report and specialist findings, adds a grounded summary and measurement checks, and cannot modify the deterministic verdict or confidence. The default path makes no model API call. Enabling it sends device and evidence details to Groq, so use it only with telemetry permitted for external processing.
+
+The dashboard does not replay a pre-written report. `data/sample_telemetry.json` contains fixed synthetic readings for each demo scenario. Selecting a scenario passes its record to the agents and correlator, which calculate findings, confidence, affected devices, and recommendations from the measurements. The default system is labeled **deterministic rule-based agents**. Selecting the same fixture again produces the same diagnosis; use an uploaded telemetry file to analyze different data. The optional Groq reviewer adds a second opinion.
+
+## What the evaluation measures
+
+The bundled evaluation checks whether the rules produce the expected diagnosis for nine fixed-seed synthetic scenarios, and whether they handle malformed inputs, duplicate records, close candidate ties, mixed faults, message failures, and confidence penalties. It evaluates this prototype's rule behavior; it is not a comparison or benchmark of a trained language model.
+
+The three specialist agents split the work by evidence type, send validated, addressed messages to the correlator, and the orchestrator assembles their findings. That is multi-agent orchestration and satisfies the hackathon's collaborating-agent requirement. The optional Groq reviewer adds model-based interpretation, but this remains a bounded hybrid system: deterministic agents own the verdict and score, while the model offers a schema-validated second opinion. It does not plan or execute network changes autonomously.
 
 ## Optional workflow features
 
@@ -94,6 +106,7 @@ Scenarios are synthetic and are not campus measurements. DNS/DHCP scenarios mode
 
 - `app.py` — Streamlit dashboard.
 - `netcoop/agents.py` — message protocol, validation, agents, orchestration, and report assembly.
+- `netcoop/model_agent.py` — optional schema-bound Groq advisory reviewer.
 - `netcoop/data_generator.py` — Colab-derived synthetic generator and scenario extensions.
 - `netcoop/workflow_store.py` — SQLite checkpoint, review, and simulation event store.
 - `mcp_server.py` — optional MCP tools and resources.

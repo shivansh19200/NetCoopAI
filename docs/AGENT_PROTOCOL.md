@@ -1,6 +1,6 @@
 # Agent message protocol: `agent_message_v1`
 
-The system is labeled **deterministic rule-based agents**. Every message is an `agent_message_v1` JSON object and is validated against [`schema.json`](schema.json) both when created and when received. A malformed message is rejected with a clear error; diagnosis continues with the remaining valid messages.
+The default mode uses **deterministic rule-based agents**; a bounded Groq reviewer is optional. Every message is an `agent_message_v1` JSON object and is validated against [`schema.json`](schema.json) both when created and when received. A malformed message is rejected with a clear error; diagnosis continues with the remaining valid messages.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -34,3 +34,7 @@ Messages are retained in order in the dashboard trace. Correlation receives only
 ## Confidence score
 
 Confidence is a deterministic evidence score, not a calibrated probability. Repeated `(device_id, timestamp, metrics)` records are deduplicated, and corroboration counts distinct devices and metrics. At least three distinct signals can support a diagnosis from one family, capped at 0.55. If two candidate scores are within 0.05, status is `ambiguous` and the report recommends a discriminating measurement. Confidence penalties and fixed-seed scenario results are documented in [`ACCURACY.md`](ACCURACY.md).
+
+## Optional model reviewer
+
+When explicitly enabled, `groq_review_agent` receives the consolidated diagnostic report and specialist findings. Its response is validated against the `model_review` JSON Schema and added as an advisory section. It cannot change the rule-based root cause or confidence. If the provider is unavailable or returns invalid data, the deterministic report remains intact and the model message is marked as a warning. No model call is made by default.

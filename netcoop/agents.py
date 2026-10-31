@@ -217,7 +217,7 @@ def reporting_agent(correlation,records,warnings,messages,failures=None,topology
         "ranked_candidates":ranked,"tied_candidates":[c["cause"] for c in ranked[:2]] if correlation["ambiguous"] else [],"conflicts":conflicts,"confidence_breakdown":{"base":winner["score"] if winner else ranked[0]["score"] if correlation["ambiguous"] and ranked else 0,"penalties":penalties,"agent_failures":round(.05*len(failures),2),"final":confidence}}
     return report
 
-def run_diagnosis(payload:Any):
+def run_diagnosis(payload:Any, model_reviewer=None):
     records,warnings,topology=normalize_records(payload); messages=[]; failures=[]
     for name,fn,args in [("performance_agent",performance_agent,(records,)),("infrastructure_agent",infrastructure_agent,(records,)),("connectivity_agent",connectivity_agent,(records,topology))]:
         try: message=fn(*args)
@@ -244,6 +244,24 @@ def run_diagnosis(payload:Any):
         report={"incident_id":"INC-"+uuid.uuid4().hex[:8].upper(),"status":"insufficient_evidence","suspected_root_cause":"Insufficient evidence to identify a probable root cause","confidence":0.0,"affected_devices":[],"supporting_evidence":[],"alternative_causes":[],"tied_candidates":[],"ranked_candidates":corr["ranked_candidates"],"recommended_actions":["Review the input and collect another time-aligned sample."],"evidence_sources":[],"limitations":list(dict.fromkeys([*warnings,f"Agent reporting_agent failed: {type(exc).__name__}."])),"conflicts":[],"confidence_breakdown":{"base":0,"penalties":{},"agent_failures":.05*len(failures),"final":0}}
     corr_message=corr["message"]; corr_message["target_agent"]="reporting_agent"
     messages.append(corr_message)
+    if model_reviewer is not None:
+        try:
+            model_review=model_reviewer(report,messages)
+            review_errors=list(Draft202012Validator(SCHEMA["$defs"]["model_review"]).iter_errors(model_review))
+            if review_errors or model_review.get("status")!="reviewed":
+                raise ValueError("Model review did not match the review schema.")
+            model_status="ok"
+            model_limitations=["Model review is advisory and does not change the deterministic verdict or confidence."]
+            model_findings=[model_review["summary"]]
+        except Exception as exc:
+            model_review={"status":"unavailable","agrees_with_rule_verdict":False,"summary":"The optional model review could not be completed; the deterministic diagnosis is unchanged.","alternative_explanations":[],"recommended_checks":[],"uncertainty":f"Review error: {type(exc).__name__}."}
+            model_status="warning"
+            model_limitations=["Optional Groq model review failed; the deterministic rule-based report remains available."]
+            model_findings=[model_review["summary"]]
+            report["limitations"]=list(dict.fromkeys([*report["limitations"],*model_limitations]))
+        model_message=_envelope("groq_review_agent",model_findings,report["supporting_evidence"],model_limitations,model_status,target="reporting_agent",received=[m["message_id"] for m in messages])
+        report["model_review"]=model_review
+        messages.append(model_message)
     reporting_failed="reporting_agent" in failures
     report_message=_envelope("reporting_agent",["Agent failed while assembling the report." if reporting_failed else f"Produced {report['status']} report."],report["supporting_evidence"],report["limitations"],"error" if reporting_failed else "ok",target="orchestrator",received=[m["message_id"] for m in messages])
     messages.append(report_message)

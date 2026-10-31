@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import os
 from html import escape
 from pathlib import Path
 
@@ -9,6 +11,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from netcoop.agents import run_diagnosis
+from netcoop.dashboard_views import build_telemetry_view
 from netcoop.data_generator import SCENARIOS, build_demo_data
 from netcoop.workflow_store import WorkflowStore
 
@@ -135,6 +138,16 @@ def safe_diagnosis(payload):
         return None, f"We couldn't finish this diagnosis. Check the telemetry format and try again. ({type(exc).__name__})"
 
 
+def safe_groq_diagnosis(payload, api_key):
+    try:
+        from netcoop.model_agent import review_diagnosis
+
+        reviewer = lambda report, messages: review_diagnosis(report, messages, api_key)
+        return run_diagnosis(payload, model_reviewer=reviewer), None
+    except Exception as exc:
+        return None, f"Groq review couldn't run ({type(exc).__name__}); use the deterministic diagnosis or check the API configuration."
+
+
 @st.cache_resource(show_spinner=False)
 def get_workflow_store():
     return WorkflowStore(WORKFLOW_DB)
@@ -164,12 +177,28 @@ saved_checkpoints = workflow_store.list_checkpoints()
 with st.sidebar:
     st.markdown('<div class="eyebrow" style="text-align:left">NETCOOP / INCIDENT LAB</div>', unsafe_allow_html=True)
     st.markdown("## Scenario controls")
-    experience = st.radio("View", ["Beginner", "Expert"], horizontal=True, help="Beginner explains findings in plain language. Expert adds metric context and scoring detail.")
-    st.caption("Deterministic rule-based agents · repeatable synthetic telemetry")
+    if hasattr(st, "segmented_control"):
+        experience = st.segmented_control("Dashboard detail", ["Beginner", "Expert"], default="Beginner", key="dashboard_detail")
+    else:
+        experience = st.radio("Dashboard detail", ["Beginner", "Expert"], horizontal=True, key="dashboard_detail", help="Beginner summarizes readings in plain language. Expert shows raw metrics, units, and metric definitions.")
+    groq_enabled = st.checkbox("Add Groq model reviewer", value=False, help="Optional model review of agent findings. The deterministic verdict and confidence remain authoritative.")
+    groq_api_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_api_key:
+        try:
+            groq_api_key = st.secrets.get("GROQ_API_KEY", "")
+        except Exception:
+            groq_api_key = ""
+    groq_review_clicked = False
+    if groq_enabled:
+        st.caption("When you run review, the rule report and agent findings are sent to Groq. Do not enable this for sensitive telemetry.")
+        if not groq_api_key:
+            st.warning("Set GROQ_API_KEY in the environment or Streamlit secrets to enable model review.")
+        groq_review_clicked = st.button("Review findings with Groq", disabled=not bool(groq_api_key), width="stretch")
+    st.caption(("Deterministic rule-based agents + Groq advisory" if groq_enabled else "Deterministic rule-based agents") + " · repeatable synthetic telemetry")
     if "scenario" not in st.session_state:
         st.session_state["scenario"] = "link_congestion"
     scenario = st.selectbox("Demo scenario", SCENARIOS, format_func=lambda value: SCENARIO_LABELS.get(value, value), key="scenario", on_change=clear_active_checkpoint)
-    run_clicked = st.button("▶  Run deterministic diagnosis", type="primary", use_container_width=True)
+    run_clicked = st.button("▶  Run deterministic diagnosis", type="primary", width="stretch")
     st.divider()
     st.markdown("**Bring your own telemetry**")
     uploaded = st.file_uploader("Upload JSON or CSV", type=["json", "csv"], help="JSON accepts a record or {records, topology}; CSV accepts one device per row.")
@@ -217,6 +246,14 @@ elif input_error:
     result, diagnosis_error = safe_diagnosis({})
 else:
     result, diagnosis_error = safe_diagnosis(payload)
+payload_fingerprint = hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest() if payload is not None else ""
+if groq_enabled and groq_review_clicked and result is not None and payload is not None and not input_error:
+    result, diagnosis_error = safe_groq_diagnosis(payload, groq_api_key)
+    if result is not None:
+        st.session_state["groq_review_fingerprint"] = payload_fingerprint
+        st.session_state["groq_review_result"] = result
+if groq_enabled and st.session_state.get("groq_review_fingerprint") == payload_fingerprint:
+    result = st.session_state.get("groq_review_result", result)
 if result is None:
     st.error(diagnosis_error or "We couldn't finish this diagnosis. Please review the input and retry.")
     st.stop()
@@ -235,7 +272,8 @@ status_label = "AMBIGUOUS" if ambiguous else "PROBABLE CAUSE IDENTIFIED" if diag
 cause_label = report["suspected_root_cause"]
 confidence_label = f"{report['confidence']:.0%}"
 confidence_word = "High" if report["confidence"] >= .75 else "Medium" if report["confidence"] >= .45 else "Low"
-confidence_note = f"{confidence_word} · deterministic rule-based agents"
+model_review_active = report.get("model_review", {}).get("status") == "reviewed"
+confidence_note = f"{confidence_word} · {'Groq-reviewed' if model_review_active else 'deterministic rule-based agents'}"
 confidence_color = "#54d38a" if confidence_word == "High" else "#ffc35c" if confidence_word == "Medium" else "#ff625e"
 source_label = "Uploaded telemetry" if uploaded is not None else "Synthetic demo fixture"
 visible_evidence = [item for item in report["supporting_evidence"] if item["metric"] != "topology_scope"][:3]
@@ -308,12 +346,15 @@ def metric_card(label, value, note, suffix=""):
         value_text = str(value)
     st.markdown(f'<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value">{value_text}</div><div class="metric-note">{note}</div></div>', unsafe_allow_html=True)
 
-cols = st.columns(5)
+st.caption(f"{experience} view · " + ("plain-language findings" if experience == "Beginner" else "raw measurements, units, and diagnostic scoring"))
+cols = st.columns(6 if experience == "Expert" else 4)
 with cols[0]: metric_card("Root cause", report["suspected_root_cause"].replace(" ", "\u00a0"), report["status"].replace("_", " ").title())
 with cols[1]: metric_card("Confidence", report["confidence"] * 100, "Rule-based evidence score", "%")
 with cols[2]: metric_card("Latency", mean_metric("latency_ms"), "Mean of available devices", " ms")
 with cols[3]: metric_card("Packet loss", mean_metric("packet_loss_pct"), "Mean of available devices", "%")
-with cols[4]: metric_card("Agent messages", len(result["agent_messages"]), "Structured handoffs")
+if experience == "Expert":
+    with cols[4]: metric_card("CPU", mean_metric("cpu_utilization_pct"), "Mean of available devices", "%")
+    with cols[5]: metric_card("Agent handoffs", len(result["agent_messages"]), "Validated messages")
 
 left, right = st.columns([1.65, 1], gap="large")
 with left:
@@ -321,13 +362,11 @@ with left:
     topology = result["topology"] or demo["topology"]
     warning_nodes = set(report["affected_devices"])
     metrics_to_highlight = {e["device_id"] for e in report["supporting_evidence"]}
-    st.components.v1.html(render_topology(topology, warning_nodes | metrics_to_highlight), height=385, scrolling=False)
+    st.html(render_topology(topology, warning_nodes | metrics_to_highlight), width="stretch")
     st.markdown('<div class="section-title">Telemetry snapshot</div>', unsafe_allow_html=True)
-    table = []
-    for row in records:
-        table.append({"Device": row["device_id"], "Type": row["device_type"], "Status": row["status"], **row["metrics"]})
-    help_columns = {name: st.column_config.NumberColumn(name, help=metric_help[name], format="%.1f") for name in metric_help if any(name in row for row in table)} if experience == "Expert" else {}
-    st.dataframe(pd.DataFrame(table), use_container_width=True, hide_index=True, column_config=help_columns)
+    view_data = build_telemetry_view(records, experience)
+    help_columns = {name: st.column_config.NumberColumn(name, help=metric_help[name], format="%.1f") for name in metric_help if name in view_data["columns"]} if experience == "Expert" else {}
+    st.dataframe(pd.DataFrame(view_data["rows"], columns=view_data["columns"]), width="stretch", hide_index=True, column_config=help_columns, alt="Telemetry readings for selected network devices")
 
 with right:
     st.markdown('<div class="section-title">Diagnostic report</div><div class="section-note">Evidence-ranked recommendation for operator review</div>', unsafe_allow_html=True)
@@ -342,6 +381,14 @@ with right:
             st.markdown(f"- `{evidence['device_id']}` · **{evidence['metric']}** {evidence['value']} {evidence['unit']} — {evidence['interpretation']}")
     else:
         st.caption("No validated evidence crossed the reporting threshold.")
+    if report.get("model_review"):
+        st.markdown("**Groq reviewer · advisory only**")
+        st.info(report["model_review"]["summary"])
+        st.caption("It does not change the rule-based verdict or confidence.")
+        if report["model_review"]["alternative_explanations"]:
+            st.markdown("Possible alternatives: " + "; ".join(report["model_review"]["alternative_explanations"]))
+        if report["model_review"]["recommended_checks"]:
+            st.markdown("Suggested checks: " + "; ".join(report["model_review"]["recommended_checks"]))
     st.markdown("**Recommended next steps**")
     for action in report["recommended_actions"]:
         st.markdown(f"- {action}")
@@ -356,7 +403,11 @@ with right:
 
 st.divider()
 with st.expander("Technical details", expanded=False):
-    st.caption("System: deterministic rule-based agents. Demo readings are stored in data/sample_telemetry.json and generated with seed 20261031.")
+    st.markdown("**What is being evaluated?**")
+    st.caption("The tests compare deterministic diagnosis rules with the expected labels for nine fixed-seed synthetic scenarios, and check malformed input, message validation, ties, mixed faults, duplicate records, and confidence penalties. This evaluates a rule-based prototype; its confidence score is not a learned-model benchmark.")
+    st.markdown("**Why multiple agents?**")
+    st.caption("Performance, infrastructure, and connectivity agents inspect different evidence and send validated, addressed messages to a correlator. The orchestrator combines those findings into one report. The optional Groq reviewer provides a bounded advisory and cannot change the rule verdict.")
+    st.caption("Core system: deterministic rule-based agents. Demo readings are stored in data/sample_telemetry.json and generated with seed 20261031.")
     st.download_button("Download the full synthetic dataset", data=json.dumps(demo, indent=2), file_name="netcoop_synthetic_telemetry.json", mime="application/json")
     if uploaded is None and scenario_record:
         st.markdown("**Selected fixture record**")
@@ -372,7 +423,9 @@ with st.expander("Technical details", expanded=False):
     ("Fault correlation", "Evidence families · competing causes"),
     ("Reporting", "Confidence · actions · JSON output"),
 ]
-    agent_cols = st.columns(5)
+    if model_review_active:
+        agents.append(("Groq reviewer", "Advisory evidence review"))
+    agent_cols = st.columns(len(agents))
     for col, (name, subtitle) in zip(agent_cols, agents):
         with col:
             st.markdown(f'<div class="agent-chip"><strong>◉ &nbsp;{name}</strong><small>{subtitle}</small></div>', unsafe_allow_html=True)
@@ -383,10 +436,10 @@ with st.expander("Technical details", expanded=False):
     if result["ranked_candidates"]:
         st.markdown("**Confidence breakdown and other possible causes**")
         st.json(report["confidence_breakdown"], expanded=False)
-        st.dataframe(pd.DataFrame([{"Candidate": c["cause"], "Score": c["score"], "Signals": c["distinct_signals"]} for c in result["ranked_candidates"]]), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame([{"Candidate": c["cause"], "Score": c["score"], "Signals": c["distinct_signals"]} for c in result["ranked_candidates"]]), width="stretch", hide_index=True, alt="Ranked possible causes and evidence scores")
 
     st.download_button("Download diagnostic report · JSON", data=json.dumps(report, indent=2), file_name=f"{report['incident_id'].lower()}_report.json", mime="application/json")
-    st.caption("NetCoop AI · deterministic rule-based agents · synthetic telemetry.")
+    st.caption("NetCoop AI · " + ("deterministic agents + Groq advisory" if model_review_active else "deterministic rule-based agents") + " · synthetic telemetry.")
     st.markdown("**Schema warnings**")
     if result["warnings"]:
         for warning in result["warnings"]: st.warning(warning)
@@ -396,7 +449,7 @@ with st.expander("Technical details", expanded=False):
     st.markdown("**Human review · pause/resume · remediation simulation**")
     checkpoint_options = [""] + [item["checkpoint_id"] for item in saved_checkpoints]
     st.selectbox("Saved checkpoints", checkpoint_options, key="resume_choice", format_func=lambda key: "Choose saved run" if not key else next((f"{item['checkpoint_id']} · {item['scenario']} · {item['phase']}" for item in saved_checkpoints if item["checkpoint_id"] == key), key))
-    st.button("Resume selected checkpoint", on_click=resume_checkpoint_callback, use_container_width=True, disabled=not bool(saved_checkpoints))
+    st.button("Resume selected checkpoint", on_click=resume_checkpoint_callback, width="stretch", disabled=not bool(saved_checkpoints))
     decision = st.radio("Operator decision", ["Approve recommendation for manual follow-up", "Request more telemetry", "Reject this diagnosis"], key="operator_decision")
     review_note = st.text_area("Review note", key="operator_note", placeholder="Add context for the next operator")
     if st.button("Save human review", key="save_review"):

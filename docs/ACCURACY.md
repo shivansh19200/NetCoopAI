@@ -1,6 +1,6 @@
 # Accuracy and scenario expectations
 
-NetCoop AI uses deterministic rule-based agents. The verdict is derived from the supplied measurements and explicit rules; confidence is a relative evidence score, not a calibrated probability. These expected results are checked by `tests/test_acceptance_repo.py` with fixed seed `20261031`.
+NetCoop AI's default diagnosis uses deterministic rule-based agents. The optional Groq reviewer does not change the verdict or confidence. The verdict is derived from supplied measurements and explicit rules; confidence is a relative evidence score, not a calibrated probability. These expected results are checked by `tests/test_acceptance_repo.py` with fixed seed `20261031`.
 
 | Scenario | Expected verdict | Actual with bundled seed | Notes |
 |---|---|---|---|

@@ -10,6 +10,8 @@ from jsonschema import Draft202012Validator
 
 import netcoop.agents as agents
 from netcoop.data_generator import SCENARIOS, build_demo_data
+from netcoop.dashboard_views import build_telemetry_view
+from netcoop.model_agent import GROQ_MODEL, review_diagnosis
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = json.loads((ROOT / "docs" / "schema.json").read_text(encoding="utf-8"))
@@ -223,4 +225,71 @@ def test_same_input_produces_same_report_except_incident_id(demo):
     first.pop("incident_id")
     second.pop("incident_id")
     assert first == second
+
+
+def test_beginner_and_expert_views_show_different_telemetry_detail():
+    records = [one_record({"latency_ms": 180, "jitter_ms": 40, "queue_drops": 65})]
+    beginner = build_telemetry_view(records, "Beginner")
+    expert = build_telemetry_view(records, "Expert")
+    assert beginner["mode"] == "Beginner"
+    assert beginner["rows"][0]["Key observations"]
+    assert "latency_ms" not in beginner["columns"]
+    assert expert["rows"][0]["latency_ms"] == 180
+    assert expert["columns"] != beginner["columns"]
+
+
+def test_optional_model_reviewer_adds_validated_advisory_without_changing_verdict():
+    payload = {"records": [one_record({"link_utilization_pct": 94, "queue_drops": 90, "latency_ms": 180})], "topology": {"devices": [{"id": "EDGE_1"}], "links": []}}
+    deterministic = agents.run_diagnosis(payload)
+    expected_cause = deterministic["report"]["suspected_root_cause"]
+    expected_confidence = deterministic["report"]["confidence"]
+    review = {
+        "status": "reviewed",
+        "agrees_with_rule_verdict": True,
+        "summary": "The measurements support the deterministic verdict.",
+        "alternative_explanations": [],
+        "recommended_checks": ["Compare link queue counters over the same interval."],
+        "uncertainty": "Only one device has a usable sample.",
+    }
+    result = agents.run_diagnosis(payload, model_reviewer=lambda _report, _messages: review)
+    assert result["report"]["suspected_root_cause"] == expected_cause
+    assert result["report"]["confidence"] == expected_confidence
+    assert result["report"]["model_review"] == review
+    model_message = next(m for m in result["agent_messages"] if m["source_agent"] == "groq_review_agent")
+    assert model_message["target_agent"] == "reporting_agent"
+    assert model_message["received_message_ids"]
+
+
+def test_model_review_failure_preserves_deterministic_report():
+    payload = {"records": [one_record({"latency_ms": 180, "jitter_ms": 40})]}
+
+    def fail(_report, _messages):
+        raise RuntimeError("provider unavailable")
+
+    result = agents.run_diagnosis(payload, model_reviewer=fail)
+    assert result["report"]["model_review"]["status"] == "unavailable"
+    assert result["report"]["suspected_root_cause"] == "Latency spike"
+    assert any("model review failed" in note.lower() for note in result["report"]["limitations"])
+
+
+def test_groq_reviewer_requests_schema_bound_advisory_without_live_network(demo):
+    report = agents.run_diagnosis({"records": [demo["records"][3]], "topology": demo["topology"]})["report"]
+    content = json.dumps({
+        "status": "reviewed", "agrees_with_rule_verdict": True,
+        "summary": "The candidate matches the measurements.", "alternative_explanations": [],
+        "recommended_checks": ["Compare queue counters."], "uncertainty": "One scenario sample.",
+    })
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            self.kwargs = kwargs
+            return type("Response", (), {"choices": [type("Choice", (), {"message": type("Message", (), {"content": content})()})()]})()
+
+    completions = FakeCompletions()
+    client = type("Client", (), {"chat": type("Chat", (), {"completions": completions})()})()
+    review = review_diagnosis(report, [], "test-key", client=client)
+    assert review["status"] == "reviewed"
+    assert completions.kwargs["model"] == GROQ_MODEL
+    assert completions.kwargs["response_format"]["json_schema"]["strict"] is True
+    assert "records" not in completions.kwargs["messages"][1]["content"]
 
