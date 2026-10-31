@@ -126,7 +126,12 @@ def mean_metric(name):
     return sum(values) / len(values) if values else None
 
 def metric_card(label, value, note, suffix=""):
-    value_text = "—" if value is None else f"{value:.1f}{suffix}"
+    if value is None:
+        value_text = "—"
+    elif isinstance(value, (int, float)):
+        value_text = f"{value:.1f}{suffix}"
+    else:
+        value_text = str(value)
     st.markdown(f'<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value">{value_text}</div><div class="metric-note">{note}</div></div>', unsafe_allow_html=True)
 
 cols = st.columns(5)
