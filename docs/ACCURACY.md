@@ -5,16 +5,18 @@ NetCoop AI's default diagnosis uses deterministic rule-based agents. The optiona
 | Scenario | Expected verdict | Actual with bundled seed | Notes |
 |---|---|---|---|
 | normal | Not enough evidence | Not enough evidence | No fault threshold crossed |
-| latency_spike | Latency spike | Latency spike (0.12) | High latency, jitter, and loss signals |
-| hardware_failure | Hardware failure | Hardware failure (0.45) | Critical status, CPU ≥95%, and interface errors |
-| link_congestion | Link congestion | Link congestion (0.49) | High link use and queue drops on the same device |
-| weak_wifi | Weak Wi-Fi | Weak Wi-Fi (0.28) | Weak signal and retransmissions with latency/loss |
-| interface_fault | Ethernet/interface fault | Ethernet/interface fault (0.19) | High interface error count |
-| dns_dhcp_failure | DNS/DHCP service failure | DNS/DHCP service failure (0.44) | Service availability signals |
-| interoperability_failure | Link congestion (lower confidence) | Link congestion (0.29) | Unsupported schema and incompatible units incur penalties |
+| latency_spike | Latency spike | Latency spike (0.31) | High latency, jitter, and loss signals |
+| hardware_failure | Hardware failure | Hardware failure (0.55) | Critical status, CPU ≥95%, and interface errors |
+| link_congestion | Link congestion | Link congestion (0.87) | High link use and queue drops on the same device |
+| weak_wifi | Weak Wi-Fi | Weak Wi-Fi (0.51) | Weak signal and retransmissions with latency/loss |
+| interface_fault | Ethernet/interface fault | Ethernet/interface fault (0.31) | High interface error count |
+| dns_dhcp_failure | DNS/DHCP service failure | DNS/DHCP service failure (0.72) | Service availability signals |
+| interoperability_failure | Link congestion (lower confidence) | Link congestion (0.67) | Unsupported schema and incompatible units incur penalties |
 | malformed_input | Not enough evidence | Not enough evidence | Invalid records are ignored with warnings |
 
 ## Confidence penalties
+
+Before penalties, candidate score is `0.36 × supporting agent families + 0.05 × additional distinct device/metric signals`, capped at `0.95`. A single-family diagnosis with at least three signals is capped at `0.55`. The specific critical-status + CPU ≥95% + high-interface-errors hardware signature receives a priority score of `0.95`, while its final single-family confidence remains capped. Close candidates within `0.05` produce an ambiguous report. These weights are tuned against the fixed-seed scenarios and remain heuristic scores, not trained or statistically calibrated probabilities.
 
 | Input condition | Penalty |
 |---|---:|

@@ -60,7 +60,7 @@ The orchestrator collects the specialist messages before invoking the correlatio
 
 ## Deterministic rule-based agents and confidence
 
-Confidence is an evidence score, not a calibrated probability. Duplicate records are removed before scoring, and corroboration is counted by distinct device and metric. A single evidence family can diagnose when at least three independent signals agree; that confidence is capped at 0.55. Close candidates within 0.05 are reported as ambiguous. Full penalty definitions and scenario expectations are in [`docs/ACCURACY.md`](docs/ACCURACY.md).
+Confidence is a deterministic evidence score, not a calibrated probability. A candidate earns 0.36 per supporting agent family and 0.05 per additional distinct device/metric signal, capped at 0.95. Duplicate records are removed before scoring. A single evidence family can diagnose when at least three independent signals agree; that confidence is capped at 0.55. Close candidates within 0.05 are reported as ambiguous. Full scoring and penalty rules are in [`docs/ACCURACY.md`](docs/ACCURACY.md).
 
 | Confidence penalty | Amount |
 |---|---:|

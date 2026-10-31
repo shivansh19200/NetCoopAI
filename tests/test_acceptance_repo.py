@@ -177,6 +177,16 @@ def test_confidence_penalties_are_applied_and_interop_is_lower(demo):
     assert no_topology["confidence"] <= clean["confidence"] - 0.09
 
 
+def test_clear_multi_agent_cases_receive_stronger_confidence_than_single_family(demo):
+    rows = {row["scenario"]: row for row in demo["records"]}
+    clean = agents.run_diagnosis({"records": [rows["link_congestion"]], "topology": demo["topology"]})["report"]
+    wifi = agents.run_diagnosis({"records": [rows["weak_wifi"]], "topology": demo["topology"]})["report"]
+    interop = agents.run_diagnosis({"records": [rows["interoperability_failure"]], "topology": demo["topology"]})["report"]
+    assert clean["confidence"] >= 0.75
+    assert wifi["confidence"] >= 0.40
+    assert interop["confidence"] < clean["confidence"] - 0.15
+
+
 def test_fractional_percent_and_seconds_alias_are_warned_and_ignored():
     result = agents.run_diagnosis({"records": [one_record({
         "link_utilization_pct": 0.94, "cpu_utilization_pct": 0.8,

@@ -146,6 +146,16 @@ def correlation_agent(messages):
     for cause,c in list(candidates.items()):
         c["evidence"]=[e for e in c["evidence"] if e["metric"]!="latency_ms"]
     rows_by_device={r["device_id"]:r for r in getattr(correlation_agent,"records",[])}
+    # Utilization or queue pressure is the required congestion anchor; latency,
+    # loss, and jitter only corroborate congestion when that anchor is present
+    # on the same device.
+    for device,metrics in bydev.items():
+        device_values={e["metric"]:e["value"] for e in evidence if e["device_id"]==device}
+        congestion_anchor=device_values.get("link_utilization_pct",0)>=70 or device_values.get("queue_drops",0)>50
+        if congestion_anchor:
+            for e in evidence:
+                if e["device_id"]==device and e["metric"] in {"latency_ms","packet_loss_pct","jitter_ms"}:
+                    add("Link congestion",e)
     # Wireless symptom combination upgrades loss/latency to Wi-Fi, but keeps
     # the diagnosis grounded in independently measured radio signals.
     for device,metrics in bydev.items():
@@ -161,7 +171,7 @@ def correlation_agent(messages):
     for cause,c in candidates.items():
         unique={(e["device_id"],e["metric"]):e for e in c["evidence"]}
         signals=len(unique); families={e["source_message_id"] for e in c["evidence"]}
-        score=min(.95, .24*min(3,len(families)) + .015*min(3,max(0,signals-1)))
+        score=min(.95, .36*min(3,len(families)) + .05*min(3,max(0,signals-1)))
         ranked.append({"cause":cause,"score":round(score,2),"families":sorted(families),"evidence":c["evidence"],"distinct_signals":signals})
     # Specific faults take precedence over generic link symptoms.
     precedence={"Hardware failure":6,"DNS/DHCP service failure":5,"Weak Wi-Fi":4,"Ethernet/interface fault":3,"Link congestion":2,"Latency spike":1}
@@ -170,7 +180,10 @@ def correlation_agent(messages):
     for device, metrics in bydev.items():
         if len(metrics & {"latency_ms","jitter_ms","packet_loss_pct"}) >= 2 and "latency_ms" in metrics and not metrics & {"signal_strength_dbm","retransmissions_pct"}:
             group=[e for e in evidence if e["device_id"]==device and e["metric"] in {"latency_ms","jitter_ms","packet_loss_pct"}]
-            ranked.append({"cause":"Latency spike","score":.27,"families":sorted({e["source_message_id"] for e in group}),"evidence":group,"distinct_signals":len(group)})
+            group_families={e["source_message_id"] for e in group}
+            group_signals={(e["device_id"],e["metric"]) for e in group}
+            group_score=min(.95,.36*min(3,len(group_families))+.05*min(3,max(0,len(group_signals)-1)))
+            ranked.append({"cause":"Latency spike","score":round(group_score,2),"families":sorted(group_families),"evidence":group,"distinct_signals":len(group_signals)})
     # Normalize after adding composite rules; favor specific device failure evidence.
     for candidate in ranked:
         candidate["score"]=round(candidate["score"],2)
@@ -179,7 +192,7 @@ def correlation_agent(messages):
         values={e["metric"]:e["value"] for e in evidence if e["device_id"]==device}
         if str(values.get("device_status","")).lower()=="critical" and values.get("cpu_utilization_pct",0)>=95 and values.get("interface_errors",0)>10:
             hardware=next((c for c in ranked if c["cause"]=="Hardware failure"),None)
-            if hardware: hardware["score"]=max(hardware["score"],.75)
+            if hardware: hardware["score"]=max(hardware["score"],.95)
     ranked.sort(key=lambda x:(x["score"],precedence.get(x["cause"],0)),reverse=True)
     winner=ranked[0] if ranked and ranked[0]["score"]>=.24 and (len(ranked[0]["families"])>=2 or ranked[0]["distinct_signals"]>=3 or ranked[0]["cause"]=="Latency spike" and ranked[0]["distinct_signals"]>=2 or ranked[0]["cause"]=="Ethernet/interface fault" and any(e["metric"]=="interface_errors" and e["value"]>=100 for e in ranked[0]["evidence"])) else None
     forced_hardware=bool(ranked and ranked[0]["cause"]=="Hardware failure" and any(str(e["value"]).lower()=="critical" for e in ranked[0]["evidence"]))
@@ -214,7 +227,7 @@ def reporting_agent(correlation,records,warnings,messages,failures=None,topology
         "affected_devices":sorted({e["device_id"] for e in (winner["evidence"] if winner else [])}),"supporting_evidence":support,
         "alternative_causes":[c["cause"] for c in ranked if not winner or c["cause"]!=winner["cause"]][:3],"recommended_actions":(["Collect the discriminating measurement for: "+" vs ".join(c["cause"] for c in ranked[:2])] if correlation["ambiguous"] else action.get(cause,["Collect time-aligned latency, loss, device health, and topology measurements."])),
         "evidence_sources":winner["families"] if winner else [],"limitations":list(dict.fromkeys([*warnings,*[x for m in messages for x in m.get("limitations",[])],*(f"Agent {f} failed; remaining agents continued." for f in failures),*( ["single evidence family"] if winner and len(winner["families"])==1 else []),"Confidence is a deterministic rule-based evidence score, not a calibrated probability."])),
-        "ranked_candidates":ranked,"tied_candidates":[c["cause"] for c in ranked[:2]] if correlation["ambiguous"] else [],"conflicts":conflicts,"confidence_breakdown":{"base":winner["score"] if winner else ranked[0]["score"] if correlation["ambiguous"] and ranked else 0,"penalties":penalties,"agent_failures":round(.05*len(failures),2),"final":confidence}}
+        "ranked_candidates":ranked,"tied_candidates":[c["cause"] for c in ranked[:2]] if correlation["ambiguous"] else [],"conflicts":conflicts,"confidence_breakdown":{"base":winner["score"] if winner else ranked[0]["score"] if correlation["ambiguous"] and ranked else 0,"scoring_rule":"0.36 per supporting agent family + 0.05 per additional distinct device/metric pair; capped at 0.95. Single-family diagnoses with 3+ signals cap at 0.55; critical hardware signature gets priority score 0.85.","penalties":penalties,"agent_failures":round(.05*len(failures),2),"final":confidence}}
     return report
 
 def run_diagnosis(payload:Any, model_reviewer=None):
