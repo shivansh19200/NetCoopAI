@@ -26,6 +26,10 @@ Canonical fields and units: `latency_ms` (ms), `jitter_ms` (ms), `packet_loss_pc
 
 All messages are retained in order in the dashboard trace. Invalid schema versions, unrecognized units, and out-of-range metrics produce validation warnings. Unknown measurements are discarded; absent data is not interpreted as healthy.
 
+## MCP adapter
+
+`mcp_server.py` exposes `list_demo_scenarios`, `diagnose_telemetry`, and `diagnose_demo_scenario` tools. Read-only resources `netcoop://protocol` and `netcoop://sample-dataset` expose this protocol and the synthetic fixture. The MCP server calls the same validator and orchestrator as the dashboard.
+
 ## Confidence score
 
 For a candidate cause, each independent evidence family contributes up to 0.30, then up to 0.10 is added for corroborating signals. Scores are capped at 0.95. The score is a rule-based evidence score, not a calibrated probability. A cause is reported only when its score is at least 0.42 and at least two independent agent families support it. Otherwise, status is `insufficient_evidence`.

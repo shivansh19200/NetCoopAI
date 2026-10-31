@@ -140,6 +140,8 @@ def infrastructure_agent(records: list[dict]) -> dict:
     evidence = []
     for row in records:
         m = row["metrics"]
+        if row["device_type"].lower() == "service" and row["status"].lower() in {"warning", "critical", "down", "failed"}:
+            evidence.append({"device_id": row["device_id"], "metric": "service_availability", "value": row["status"], "unit": "state", "interpretation": "Service component reports a degraded state"})
         for metric, threshold, text in [
             ("cpu_utilization_pct", 85, "High device CPU utilization"),
             ("memory_utilization_pct", 90, "High device memory utilization"),
@@ -188,6 +190,9 @@ def correlation_agent(messages: list[dict]) -> dict:
     for item in evidence:
         metric, value = item["metric"], item["value"]
         if metric == "topology_scope":
+            continue
+        if metric == "service_availability" and str(value).lower() in {"warning", "critical", "down", "failed"}:
+            add("DNS/DHCP service failure", "infrastructure_agent", item)
             continue
         fam = "performance_agent" if metric in {"latency_ms", "jitter_ms", "packet_loss_pct", "link_utilization_pct", "signal_strength_dbm", "retransmissions_pct"} else ("connectivity_agent" if metric == "service_status" else "infrastructure_agent")
         if metric == "service_status": add("DNS/DHCP service failure", fam, item)

@@ -10,9 +10,11 @@ import streamlit.components.v1 as components
 
 from netcoop.agents import run_diagnosis
 from netcoop.data_generator import SCENARIOS, build_demo_data
+from netcoop.workflow_store import WorkflowStore
 
 ROOT = Path(__file__).parent
 DATA_PATH = ROOT / "data" / "sample_telemetry.json"
+WORKFLOW_DB = ROOT / "state" / "netcoop_workflows.sqlite3"
 SCENARIO_LABELS = {
     "normal": "Normal operation", "latency_spike": "Latency spike",
     "hardware_failure": "Hardware failure", "link_congestion": "Link congestion",
@@ -42,24 +44,24 @@ def render_topology(topology: dict, highlighted: set[str]) -> str:
         if not a or not b: continue
         d = f"M {a[0]+52} {a[1]+21} C {(a[0]+b[0])/2} {a[1]+21}, {(a[0]+b[0])/2} {b[1]+21}, {b[0]} {b[1]+21}"
         high = float(link.get("utilization_pct", 0) or 0) >= 85 or link.get("target") in highlighted
-        color = "#ff747e" if high else "#27465c"
+        color = "#ff623e" if high else "#08bff5"
         lines.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{2.5 if high else 1.5}"/>')
-        packets.append(f'<circle r="3.5" fill="{"#ff8f95" if high else "#4de2c5"}"><animateMotion dur="{3.2 + i*.65}s" begin="-{i*.7}s" repeatCount="indefinite" path="{d}"/></circle>')
+        packets.append(f'<circle r="3.5" fill="{"#ff9a39" if high else "#08bff5"}"><animateMotion dur="{3.2 + i*.65}s" begin="-{i*.7}s" repeatCount="indefinite" path="{d}"/></circle>')
         midx, midy = (a[0]+b[0]+52)/2, (a[1]+b[1]+42)/2 - 9
         labels.append(f'<text x="{midx}" y="{midy}" class="load">{float(link.get("utilization_pct",0) or 0):.0f}%</text>')
     cards = []
     for node in nodes:
         x, y = coords.get(node.get("id"), (0, 0))
         is_hot = node.get("id") in highlighted
-        color = "#ff747e" if is_hot else "#4de2c5"
+        color = "#ff623e" if is_hot else "#08bff5"
         label = escape(str(node.get("label", node.get("id", "Node")))[:22])
         node_id = escape(str(node.get("id", ""))[:20])
-        cards.append(f'<g><rect x="{x}" y="{y}" width="112" height="43" rx="10" fill="#102638" stroke="{color}" stroke-width="{1.7 if is_hot else 1}"/><circle cx="{x+13}" cy="{y+14}" r="3.5" fill="{color}"/><text x="{x+23}" y="{y+17}" class="label">{label}</text><text x="{x+12}" y="{y+33}" class="id">{node_id}</text></g>')
+        cards.append(f'<g><rect x="{x}" y="{y}" width="112" height="43" rx="10" fill="#151517" stroke="{color}" stroke-width="{1.7 if is_hot else 1}"/><circle cx="{x+13}" cy="{y+14}" r="3.5" fill="{color}"/><text x="{x+23}" y="{y+17}" class="label">{label}</text><text x="{x+12}" y="{y+33}" class="id">{node_id}</text></g>')
     return f'''<!doctype html><html><head><meta charset="utf-8"><style>
-    *{{box-sizing:border-box}} body{{margin:0;background:#091824;font-family:Manrope,Arial,sans-serif;color:#dfeaf2}}
-    .frame{{height:370px;border:1px solid #1b3548;border-radius:14px;background:radial-gradient(ellipse at 45% 45%,#102536,#091824 70%);overflow:hidden;position:relative}}
-    svg{{width:100%;height:100%}} .label{{font-size:9px;fill:#dce8f1;font-weight:700}} .id{{font-size:7px;fill:#7891a4;font-family:monospace}} .load{{font-size:9px;fill:#8ea6b9;font-family:monospace}}
-    .legend{{position:absolute;right:14px;top:13px;font-size:9px;color:#859cae;font-family:monospace;letter-spacing:.06em}} .legend b{{color:#4de2c5;font-weight:400}} .key{{color:#ff858c!important}}
+    *{{box-sizing:border-box}} body{{margin:0;background:#080808;font-family:Manrope,Arial,sans-serif;color:#f1f1f1}}
+    .frame{{height:370px;border:1px solid #29292c;border-radius:14px;background:radial-gradient(ellipse at 45% 45%,#1b100d,#080808 70%);overflow:hidden;position:relative}}
+    svg{{width:100%;height:100%}} .label{{font-size:9px;fill:#eeeeef;font-weight:700}} .id{{font-size:7px;fill:#85858b;font-family:monospace}} .load{{font-size:9px;fill:#aaa;font-family:monospace}}
+    .legend{{position:absolute;right:14px;top:13px;font-size:9px;color:#999;font-family:monospace;letter-spacing:.06em}} .legend b{{color:#08bff5;font-weight:400}} .key{{color:#ff623e!important}}
     </style></head><body><div class="frame"><div class="legend"><b>●</b> LIVE FLOW &nbsp; <b class="key">●</b> ELEVATED</div><svg viewBox="0 0 800 340" preserveAspectRatio="xMidYMid meet">{''.join(lines)}{''.join(labels)}{''.join(packets)}{''.join(cards)}</svg></div></body></html>'''
 
 
@@ -67,32 +69,46 @@ st.set_page_config(page_title="NetCoop AI | Network diagnostics", page_icon="◈
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
-:root { --mint:#4de2c5; --blue:#64a8ff; --muted:#8ca3b6; --panel:#0e2030; }
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
 html, body, [class*="css"] { font-family:'Manrope',sans-serif; }
-.stApp { background: radial-gradient(ellipse at 70% 0%, #10283a 0%, #07131f 42%); }
-.block-container { padding-top:2.1rem; padding-bottom:3rem; max-width:1500px; }
-[data-testid="stSidebar"] { background:#091824; border-right:1px solid #1c3447; }
-.eyebrow { color:var(--mint); text-transform:uppercase; letter-spacing:.18em; font:500 .72rem 'DM Mono',monospace; }
-.hero-title { color:#f0f7fc; font-size:2.25rem; font-weight:800; letter-spacing:-.055em; margin:.2rem 0 0; }
-.hero-sub { color:#9cb1c3; font-size:.96rem; margin:.25rem 0 0; }
-.pill { display:inline-flex; gap:.45rem; align-items:center; padding:.38rem .72rem; background:#112b3c; border:1px solid #255069; border-radius:999px; color:#a5c9da; font:.7rem 'DM Mono',monospace; }
-.dot { width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 12px #4de2c599; }
-.metric-card { background:linear-gradient(140deg,#102536,#0b1b29); border:1px solid #1b3548; border-radius:14px; padding:15px 17px 13px; min-height:98px; }
-.metric-label { color:#92a8ba;font: .68rem 'DM Mono',monospace; letter-spacing:.1em;text-transform:uppercase; }
-.metric-value { color:#f0f7fc;font-size:1.65rem;font-weight:800;letter-spacing:-.06em;margin-top:3px; }
-.metric-note { color:#6f879a;font-size:.72rem;margin-top:-2px; }
-.section-title { color:#e7f0f7;font-size:1rem;font-weight:750;letter-spacing:-.02em; }
-.section-note { color:#8299ac;font-size:.78rem; }
-.agent-chip { background:#0f2637;border:1px solid #244154;border-radius:12px;padding:12px;height:100%; }
-.agent-chip strong { color:#e7f0f7;font-size:.82rem; }
-.agent-chip small { display:block;color:#8da4b7;margin-top:4px;font-size:.7rem; }
+.stApp { background:radial-gradient(ellipse at 50% 3%,#241007 0%,#0b0908 29%,#050505 66%);color:#f4f4f4; }
+.block-container { padding-top:1rem;padding-bottom:3rem;max-width:1420px; }
+[data-testid="stHeader"] { background:#060606; }
+[data-testid="stSidebar"] { background:#0a0a0b;border-right:1px solid #242426; }
+[data-testid="stSidebar"] h2 { font-family:'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase; }
+.brandbar { display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #262323;padding:12px 2px 15px;margin-bottom:28px; }
+.brandmark { color:#f5f5f5;font-size:.85rem;font-weight:900;letter-spacing:.21em;text-transform:uppercase; }
+.brandmark span { color:#ff8a00; }
+.brandmeta { color:#777;font:500 .64rem 'DM Mono',monospace;letter-spacing:.12em; }
+.eyebrow { color:#ffc35c;text-transform:uppercase;letter-spacing:.24em;font:500 .68rem 'DM Mono',monospace;text-align:center; }
+.hero-title { color:#ff4928;background:linear-gradient(90deg,#ffb12e 0%,#ff5a21 42%,#f12218 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font:900 clamp(3.3rem,9vw,7.6rem)/.95 'Barlow Condensed',Impact,sans-serif;letter-spacing:.075em;text-align:center;text-shadow:0 0 34px #fa3e192e;margin:.2rem 0 .55rem; }
+.hero-sub { color:#eee;font:800 clamp(1.3rem,4vw,2.25rem)/1 'Manrope',sans-serif;letter-spacing:.22em;text-align:center;text-transform:uppercase;margin:.3rem 0 1.1rem; }
+.hero-status { width:fit-content;margin:0 auto 1.1rem;padding:.62rem 1.5rem;border:1px solid #782019;border-radius:999px;background:linear-gradient(90deg,#3a090a,#551008,#350908);box-shadow:0 0 30px #ff302444;color:#fff;font:800 .78rem 'Manrope',sans-serif;letter-spacing:.12em;text-align:center; }
+.pill { display:inline-flex;gap:.45rem;align-items:center;padding:.38rem .72rem;background:#161719;border:1px solid #36373a;border-radius:999px;color:#c3c3c5;font:.66rem 'DM Mono',monospace; }
+.dot { width:7px;height:7px;border-radius:50%;background:#ff3b47;box-shadow:0 0 12px #ff354e; }
+.scoreboard { background:linear-gradient(135deg,#101114,#0b0b0c);border:1px solid #252529;border-radius:20px;padding:22px 26px 20px;margin:1.8rem 0 1.3rem;box-shadow:0 18px 55px #0009; }
+.scorelabel { color:#bcbcc0;font-size:.78rem;font-weight:750; }
+.scorevalue { font:700 2.5rem/.95 'Barlow Condensed',sans-serif;letter-spacing:.02em;margin:.32rem 0;color:#fff; }
+.scoremeta { color:#85868a;font: .65rem 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em; }
+.redtext { color:#ff5d67!important; }.bluetext { color:#08bff5!important; }
+.scoreline { height:5px;border-radius:20px;background:linear-gradient(90deg,#ff384a 0 50%,#08baf3 50% 100%);margin:1.1rem 0 .65rem;box-shadow:0 0 15px #ff384a33; }
+.source-note { text-align:center;color:#777;font: .64rem 'DM Mono',monospace;letter-spacing:.05em;margin:.7rem 0 1.8rem; }
+.metric-card { position:relative;background:linear-gradient(155deg,#151517,#0b0b0c);border:1px solid #28282b;border-radius:13px;padding:15px 16px 13px;min-height:105px;overflow:hidden; }
+.metric-card:before { content:'';position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,#ff4738,#ff9e24); }
+.metric-label { color:#939399;font: .64rem 'DM Mono',monospace;letter-spacing:.13em;text-transform:uppercase; }
+.metric-value { color:#f9f9fa;font:700 1.55rem/1.12 'Barlow Condensed',sans-serif;letter-spacing:.015em;margin-top:6px;overflow-wrap:anywhere; }
+.metric-note { color:#77777c;font-size:.66rem;margin-top:3px; }
+.section-title { color:#06bafa;font:800 1.55rem 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;text-shadow:0 0 20px #00a7f555; }
+.section-note { color:#85858b;font-size:.73rem; }
+.agent-chip { background:linear-gradient(145deg,#171719,#0c0c0d);border:1px solid #2a2a2d;border-radius:11px;padding:14px 12px;height:100%;box-shadow:inset 0 1px #ffffff08; }
+.agent-chip strong { color:#f5f5f6;font-size:.76rem; }
+.agent-chip small { display:block;color:#89898e;margin-top:5px;font-size:.65rem; }
 .mono { font-family:'DM Mono',monospace; }
-div[data-testid="stExpander"] { border:1px solid #1b3548;border-radius:12px;background:#0b1b29; }
-div[data-testid="stDataFrame"] { border:1px solid #1b3548;border-radius:12px;overflow:hidden; }
-div[data-testid="stDownloadButton"] button { background:#4de2c5;color:#07131f;border:0;font-weight:800; }
+div[data-testid="stExpander"] { border:1px solid #29292c;border-radius:11px;background:#101012; }
+div[data-testid="stDataFrame"] { border:1px solid #29292c;border-radius:11px;overflow:hidden; }
+div[data-testid="stDownloadButton"] button { background:linear-gradient(90deg,#ff8a00,#ff4331);color:#0a0807;border:0;font-weight:900;letter-spacing:.04em; }
 div[data-testid="stButton"] button { border-radius:10px; }
-.stAlert { border-radius:12px; }
+.stAlert { border-radius:11px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -104,18 +120,56 @@ def load_demo():
     return build_demo_data()
 
 
+@st.cache_data(show_spinner=False)
+def cached_diagnosis(payload):
+    return run_diagnosis(payload)
+
+
+@st.cache_resource(show_spinner=False)
+def get_workflow_store():
+    return WorkflowStore(WORKFLOW_DB)
+
+
+def resume_checkpoint_callback():
+    checkpoint_id = st.session_state.get("resume_choice")
+    if not checkpoint_id:
+        return
+    checkpoint = get_workflow_store().load_checkpoint(checkpoint_id)
+    if checkpoint:
+        get_workflow_store().mark_resumed(checkpoint_id)
+        checkpoint["phase"] = "resumed"
+        st.session_state["active_checkpoint"] = checkpoint
+        st.session_state["scenario"] = checkpoint["scenario"]
+
+
+def clear_active_checkpoint():
+    st.session_state.pop("active_checkpoint", None)
+
+
 demo = load_demo()
 records_by_scenario = {row.get("scenario"): row for row in demo.get("records", [])}
+workflow_store = get_workflow_store()
+saved_checkpoints = workflow_store.list_checkpoints()
 
 with st.sidebar:
-    st.markdown('<div class="eyebrow">NetCoop AI</div>', unsafe_allow_html=True)
-    st.markdown("## Incident lab")
-    st.caption("Synthetic campus network · operator review")
-    scenario = st.selectbox("Demo scenario", SCENARIOS, format_func=lambda value: SCENARIO_LABELS.get(value, value), index=SCENARIOS.index("link_congestion"))
+    st.markdown('<div class="eyebrow" style="text-align:left">NETCOOP / INCIDENT LAB</div>', unsafe_allow_html=True)
+    st.markdown("## Scenario controls")
+    st.caption("Repeatable synthetic campus telemetry")
+    if "scenario" not in st.session_state:
+        st.session_state["scenario"] = "link_congestion"
+    scenario = st.selectbox("Demo scenario", SCENARIOS, format_func=lambda value: SCENARIO_LABELS.get(value, value), key="scenario", on_change=clear_active_checkpoint)
     run_clicked = st.button("▶  Run agent diagnosis", type="primary", use_container_width=True)
     st.divider()
     st.markdown("**Bring your own telemetry**")
     uploaded = st.file_uploader("Upload JSON or CSV", type=["json", "csv"], help="JSON accepts a record or {records, topology}; CSV accepts one device per row.")
+    st.markdown("---")
+    st.markdown("**Dataset source**")
+    st.caption("`data/sample_telemetry.json` · seed `20261031` · Colab-derived synthetic readings")
+    st.caption("Switching scenarios selects a fixed fixture record; agents recompute findings from those measurements. This is not live campus telemetry.")
+    st.markdown("**Pause / resume**")
+    checkpoint_options = [""] + [item["checkpoint_id"] for item in saved_checkpoints]
+    st.selectbox("Saved checkpoints", checkpoint_options, key="resume_choice", format_func=lambda key: "Choose saved run" if not key else next((f"{item['checkpoint_id']} · {item['scenario']} · {item['phase']}" for item in saved_checkpoints if item["checkpoint_id"] == key), key))
+    st.button("Resume selected checkpoint", on_click=resume_checkpoint_callback, use_container_width=True, disabled=not bool(saved_checkpoints))
     st.caption("This prototype makes recommendations only. It does not connect to campus infrastructure or perform remediation.")
 
 if "last_scenario" not in st.session_state:
@@ -146,20 +200,43 @@ else:
     selected = records_by_scenario.get(scenario)
     payload = {"records": [selected] if selected else [], "topology": demo["topology"]}
 
-if input_error:
+active_checkpoint = st.session_state.get("active_checkpoint")
+if active_checkpoint and uploaded is None and not input_error:
+    payload = active_checkpoint["payload"]
+    result = active_checkpoint["result"]
+elif input_error:
     st.error(input_error)
     result = run_diagnosis({})
 else:
-    result = run_diagnosis(payload)
+    result = cached_diagnosis(payload)
 report = result["report"]
+st.session_state["current_payload"] = payload
+st.session_state["current_result"] = result
+st.session_state["current_scenario"] = scenario
 
-st.markdown('<div class="eyebrow">NETWORK OPERATIONS CENTER <span style="color:#456176">/</span> DIAGNOSTIC WORKSPACE</div>', unsafe_allow_html=True)
-head_left, head_right = st.columns([4, 1])
-with head_left:
-    st.markdown('<div class="hero-title">Network fault diagnosis</div><div class="hero-sub">Independent agents, one evidence trail, a clearer next step.</div>', unsafe_allow_html=True)
-with head_right:
-    st.markdown('<div style="text-align:right;padding-top:12px"><span class="pill"><span class="dot"></span> SYSTEM READY</span></div>', unsafe_allow_html=True)
-st.write("")
+st.markdown('<div class="brandbar"><div class="brandmark">◈ &nbsp; NETCOOP <span>AI</span></div><div class="brandmeta">CAMPUS NETWORK / ALL SIGNALS, ONE DIAGNOSIS</div><div class="pill"><span class="dot"></span> DEMO LIVE</div></div>', unsafe_allow_html=True)
+st.markdown('<div class="eyebrow">THE CAMPUS NETWORK OPERATIONS CENTER</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-title">NETCOOP AI</div><div class="hero-sub">LIVE IN SIGHT</div><div class="hero-status">● &nbsp; SYNTHETIC MONITORING IS LIVE &nbsp; ✦</div>', unsafe_allow_html=True)
+
+scenario_record = records_by_scenario.get(scenario, {})
+observed_devices = ", ".join(r["device_id"] for r in result["records"]) or "Awaiting telemetry"
+scenario_heading = "UPLOADED TELEMETRY" if uploaded is not None else SCENARIO_LABELS.get(scenario, scenario).upper()
+scenario_device = "UPLOADED DATA" if uploaded is not None else str(scenario_record.get("device_id", "SAMPLE RECORD"))
+agent_state = "DIAGNOSED" if report["status"] == "diagnosed" else "NEEDS MORE EVIDENCE"
+st.markdown(f'''<div class="scoreboard">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div><div class="scorelabel redtext">● &nbsp; SELECTED SCENARIO</div><div class="scorevalue">{escape(scenario_heading)}</div><div class="scoremeta">FIXTURE RECORD · {escape(scenario_device)}</div></div>
+<div style="text-align:right"><div class="scorelabel bluetext">● &nbsp; AGENT RESULT</div><div class="scorevalue">{agent_state}</div><div class="scoremeta">{len(result["agent_messages"])} STRUCTURED HANDOFFS · {report["confidence"]:.0%} EVIDENCE SCORE</div></div>
+</div><div class="scoreline"></div>
+<div class="scoremeta">AFFECTED SCOPE &nbsp; {escape(observed_devices)} &nbsp;&nbsp; / &nbsp;&nbsp; SOURCE &nbsp; {"UPLOADED TELEMETRY" if uploaded is not None else "SYNTHETIC DATASET"}</div>
+</div>''', unsafe_allow_html=True)
+st.markdown('<div class="source-note">COLAB-INSPIRED SYNTHETIC FIXTURES · REPEATABLE SEED 20261031 · AGENT FINDINGS RECOMPUTED FROM SELECTED METRICS</div>', unsafe_allow_html=True)
+with st.expander("What is this scenario using?", expanded=False):
+    st.caption("These are generated demo readings stored in data/sample_telemetry.json. Their metric values are repeatable for seed 20261031. The selected record is passed through the agents and correlator when selected. The agent rules and action wording are deterministic; no LLM or live network feed is connected.")
+    st.download_button("Download the full synthetic dataset", data=json.dumps(demo, indent=2), file_name="netcoop_synthetic_telemetry.json", mime="application/json")
+    if uploaded is None and scenario_record:
+        st.markdown("**Selected fixture record**")
+        st.json(scenario_record, expanded=True)
 
 records = result["records"]
 all_metrics = [r["metrics"] for r in records]
@@ -249,5 +326,44 @@ if result["ranked_candidates"]:
         st.dataframe(pd.DataFrame([{"Candidate": c["cause"], "Score": c["score"], "Families": ", ".join(c["families"]), "Signals": len(c["evidence"])} for c in result["ranked_candidates"]]), use_container_width=True, hide_index=True)
 
 st.download_button("Download diagnostic report · JSON", data=json.dumps(report, indent=2), file_name=f"{report['incident_id'].lower()}_report.json", mime="application/json")
-st.caption("NetCoop AI prototype · synthetic data · all corrective actions remain recommendations for a human operator.")
+st.caption("NetCoop AI prototype · synthetic data · remediation controls only record a simulation; they never contact network devices.")
+
+with st.expander("Human review · pause/resume · remediation simulation", expanded=False):
+    st.markdown("**Human-in-the-loop review**")
+    decision = st.radio("Operator decision", ["Approve recommendation for manual follow-up", "Request more telemetry", "Reject this diagnosis"], key="operator_decision")
+    review_note = st.text_area("Review note", key="operator_note", placeholder="Add context for the next operator")
+    if st.button("Save human review", key="save_review"):
+        review_id = workflow_store.save_review(report["incident_id"], decision, review_note)
+        st.session_state["review_notice"] = review_id
+    if st.session_state.get("review_notice"):
+        st.success(f"Review saved locally: {st.session_state['review_notice']}")
+
+    st.markdown("**Remediation preview (simulation only)**")
+    proposed_action = st.selectbox("Proposed action", report["recommended_actions"], key="simulated_action")
+    if st.button("Simulate proposed action", key="simulate_action"):
+        simulation_id = workflow_store.save_simulation(report["incident_id"], proposed_action)
+        st.session_state["simulation_notice"] = simulation_id
+    if st.session_state.get("simulation_notice"):
+        st.info(f"{st.session_state['simulation_notice']} · Preview recorded. No command was sent and no device was changed.")
+
+    st.markdown("**Workflow checkpoint**")
+    if st.button("Pause and save this run", key="pause_workflow"):
+        checkpoint_id = workflow_store.save_checkpoint(
+            st.session_state.get("current_scenario", scenario),
+            st.session_state.get("current_payload"),
+            st.session_state.get("current_result"),
+            phase="paused",
+        )
+        st.session_state["checkpoint_notice"] = checkpoint_id
+        st.rerun()
+    if st.session_state.get("checkpoint_notice"):
+        st.success(f"Paused workflow saved: {st.session_state['checkpoint_notice']}. Resume it from the sidebar.")
+
+    events = workflow_store.recent_events()
+    if events["reviews"] or events["simulations"]:
+        st.markdown("**Recent persisted review and simulation log**")
+        for item in events["reviews"]:
+            st.write(f"{item['created_at']} · Review {item['review_id']} · {item['decision']}")
+        for item in events["simulations"]:
+            st.write(f"{item['created_at']} · Simulation {item['simulation_id']} · {item['action']} · {item['result']}")
 
