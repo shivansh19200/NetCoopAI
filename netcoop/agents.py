@@ -276,7 +276,7 @@ def run_diagnosis(payload:Any, model_reviewer=None):
         report["model_review"]=model_review
         messages.append(model_message)
     reporting_failed="reporting_agent" in failures
-    report_message=_envelope("reporting_agent",["Agent failed while assembling the report." if reporting_failed else f"Produced {report['status']} report."],report["supporting_evidence"],report["limitations"],"error" if reporting_failed else "ok",target="orchestrator",received=[m["message_id"] for m in messages])
+    report_message=_envelope("reporting_agent",["Agent failed while assembling the report." if reporting_failed else f"Report verdict: {report['suspected_root_cause']} ({report['status']}); evidence score {report['confidence']:.0%}."],report["supporting_evidence"],report["limitations"],"error" if reporting_failed else "ok",target="orchestrator",received=[m["message_id"] for m in messages])
     messages.append(report_message)
     for message in messages:
         error=_validate_message(message)

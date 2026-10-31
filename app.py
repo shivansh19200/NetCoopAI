@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 from netcoop.agents import run_diagnosis
 from netcoop.dashboard_views import build_telemetry_view
@@ -63,12 +62,11 @@ def render_topology(topology: dict, highlighted: set[str]) -> str:
         label = escape(str(node.get("label", node.get("id", "Node")))[:22])
         node_id = escape(str(node.get("id", ""))[:20])
         cards.append(f'<g><rect x="{x}" y="{y}" width="112" height="43" rx="10" fill="#151517" stroke="{color}" stroke-width="{1.7 if is_hot else 1}"/><circle cx="{x+13}" cy="{y+14}" r="3.5" fill="{color}"/><text x="{x+23}" y="{y+17}" class="label">{label}</text><text x="{x+12}" y="{y+33}" class="id">{node_id}</text></g>')
-    return f'''<!doctype html><html><head><meta charset="utf-8"><style>
-    *{{box-sizing:border-box}} body{{margin:0;background:#080808;font-family:Manrope,Arial,sans-serif;color:#f1f1f1}}
-    .frame{{height:370px;border:1px solid #29292c;border-radius:14px;background:radial-gradient(ellipse at 45% 45%,#1b100d,#080808 70%);overflow:hidden;position:relative}}
-    svg{{width:100%;height:100%}} .label{{font-size:9px;fill:#eeeeef;font-weight:700}} .id{{font-size:7px;fill:#85858b;font-family:monospace}} .load{{font-size:9px;fill:#aaa;font-family:monospace}}
-    .legend{{position:absolute;right:14px;top:13px;font-size:9px;color:#999;font-family:monospace;letter-spacing:.06em}} .legend b{{color:#08bff5;font-weight:400}} .key{{color:#ff623e!important}}
-    </style></head><body><div class="frame"><div class="legend"><b>●</b> LIVE FLOW &nbsp; <b class="key">●</b> ELEVATED</div><svg viewBox="0 0 800 340" preserveAspectRatio="xMidYMid meet">{''.join(lines)}{''.join(labels)}{''.join(packets)}{''.join(cards)}</svg></div></body></html>'''
+    return f'''<style>
+    .netcoop-topology-frame{{height:420px;min-height:420px;border:1px solid #29292c;border-radius:14px;background:radial-gradient(ellipse at 45% 45%,#1b100d,#080808 70%);overflow:auto;position:relative;font-family:Manrope,Arial,sans-serif;color:#f1f1f1}}
+    .netcoop-topology-frame svg{{display:block;width:100%;min-width:700px;height:400px}} .netcoop-topology-frame .label{{font-size:9px;fill:#eeeeef;font-weight:700}} .netcoop-topology-frame .id{{font-size:7px;fill:#85858b;font-family:monospace}} .netcoop-topology-frame .load{{font-size:9px;fill:#aaa;font-family:monospace}}
+    .netcoop-topology-frame .legend{{position:absolute;right:14px;top:13px;font-size:9px;color:#999;font-family:monospace;letter-spacing:.06em}} .netcoop-topology-frame .legend b{{color:#08bff5;font-weight:400}} .netcoop-topology-frame .key{{color:#ff623e!important}}
+    </style><div class="netcoop-topology-frame"><div class="legend"><b>●</b> PACKET FLOW &nbsp; <b class="key">●</b> ELEVATED</div><svg viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Network topology with animated packet flow">{''.join(lines)}{''.join(labels)}{''.join(packets)}{''.join(cards)}</svg></div>'''
 
 
 st.set_page_config(page_title="NetCoop AI | Deterministic rule-based agents", page_icon="◈", layout="wide", initial_sidebar_state="expanded")
@@ -205,8 +203,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**Dataset source**")
     st.caption("`data/sample_telemetry.json` · seed `20261031` · Colab-derived synthetic readings")
-    st.caption("Switching scenarios selects a fixed fixture record; agents recompute findings from those measurements. This is not live campus telemetry.")
-    st.caption("This prototype makes recommendations only. It does not connect to campus infrastructure or perform remediation.")
 
 if "last_scenario" not in st.session_state:
     st.session_state.last_scenario = scenario
@@ -234,7 +230,8 @@ if uploaded is not None:
         input_error = f"Could not read {uploaded.name}: {exc}"
 else:
     selected = records_by_scenario.get(scenario)
-    payload = {"records": [selected] if selected else [], "topology": demo["topology"]}
+    analysis_record = {key: value for key, value in selected.items() if key != "scenario"} if selected else None
+    payload = {"records": [analysis_record] if analysis_record else [], "topology": demo["topology"]}
 
 active_checkpoint = st.session_state.get("active_checkpoint")
 diagnosis_error = None
@@ -362,7 +359,10 @@ with left:
     topology = result["topology"] or demo["topology"]
     warning_nodes = set(report["affected_devices"])
     metrics_to_highlight = {e["device_id"] for e in report["supporting_evidence"]}
-    st.html(render_topology(topology, warning_nodes | metrics_to_highlight), width="stretch")
+    if topology.get("devices"):
+        st.html(render_topology(topology, warning_nodes | metrics_to_highlight), width="stretch")
+    else:
+        st.info("No usable topology was supplied. Add devices and links in the uploaded JSON to map the affected segment.")
     st.markdown('<div class="section-title">Telemetry snapshot</div>', unsafe_allow_html=True)
     view_data = build_telemetry_view(records, experience)
     help_columns = {name: st.column_config.NumberColumn(name, help=metric_help[name], format="%.1f") for name in metric_help if name in view_data["columns"]} if experience == "Expert" else {}
@@ -401,12 +401,39 @@ with right:
             for limitation in report["limitations"]:
                 st.write("• " + limitation)
 
+st.markdown('<div class="section-title">Agent findings</div><div class="section-note">Scenario label withheld · specialists analyze telemetry and topology · correlator compares their messages and ranks causes.</div>', unsafe_allow_html=True)
+message_by_agent = {message["source_agent"]: message for message in result["agent_messages"]}
+specialists = [
+    ("performance_agent", "Performance", "Latency, jitter, loss, link use, Wi-Fi signal"),
+    ("infrastructure_agent", "Infrastructure", "CPU, memory, queues, interfaces, device health"),
+    ("connectivity_agent", "Connectivity", "Topology scope and network services"),
+]
+specialist_cols = st.columns(3)
+for col, (agent_id, label, role) in zip(specialist_cols, specialists):
+    message = message_by_agent.get(agent_id, {})
+    with col, st.container(border=True):
+        st.markdown(f"**{label} agent**")
+        st.caption(role)
+        if message.get("evidence"):
+            for evidence_item in message["evidence"][:3]:
+                st.write(f"{evidence_item['device_id']} · {evidence_item['metric']} **{evidence_item['value']} {evidence_item['unit']}**")
+            if len(message["evidence"]) > 3:
+                st.caption(f"+ {len(message['evidence']) - 3} more findings")
+        else:
+            st.write("No elevated readings found.")
+correlator_message = message_by_agent.get("correlation_agent", {})
+top_candidate = report.get("ranked_candidates", [])
+correlation_summary = f"Compared {len(correlator_message.get('received_message_ids', []))} specialist messages"
+if top_candidate:
+    correlation_summary += f" · ranked {top_candidate[0]['cause']} first ({top_candidate[0]['score']:.0%})"
+st.info(correlation_summary + f" · report confidence {report['confidence']:.0%}", icon=":material/account_tree:")
+
 st.divider()
 with st.expander("Technical details", expanded=False):
     st.markdown("**What is being evaluated?**")
     st.caption("The tests compare deterministic diagnosis rules with the expected labels for nine fixed-seed synthetic scenarios, and check malformed input, message validation, ties, mixed faults, duplicate records, and confidence penalties. This evaluates a rule-based prototype; its confidence score is not a learned-model benchmark.")
-    st.markdown("**Why multiple agents?**")
-    st.caption("Performance, infrastructure, and connectivity agents inspect different evidence and send validated, addressed messages to a correlator. The orchestrator combines those findings into one report. The optional Groq reviewer provides a bounded advisory and cannot change the rule verdict.")
+    st.markdown("**What each agent contributes**")
+    st.caption("Each specialist sends a validated message. The correlator compares support across agents and sends its result to the report writer.")
     st.caption("Core system: deterministic rule-based agents. Demo readings are stored in data/sample_telemetry.json and generated with seed 20261031.")
     st.download_button("Download the full synthetic dataset", data=json.dumps(demo, indent=2), file_name="netcoop_synthetic_telemetry.json", mime="application/json")
     if uploaded is None and scenario_record:
@@ -415,7 +442,7 @@ with st.expander("Technical details", expanded=False):
     if experience == "Expert":
         st.markdown("**Metric guide**")
         for metric, explanation in metric_help.items(): st.caption(f"{metric}: {explanation}")
-    st.markdown('<div class="section-title">Agent collaboration trace</div><div class="section-note">Deterministic rule-based agents → evidence correlation → unified report</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Agent collaboration trace</div><div class="section-note">Specialist findings → evidence comparison → ranked diagnosis → report</div>', unsafe_allow_html=True)
     agents = [
     ("Performance", "Latency · loss · jitter · link load"),
     ("Infrastructure", "CPU · memory · queues · interfaces"),
@@ -429,10 +456,20 @@ with st.expander("Technical details", expanded=False):
     for col, (name, subtitle) in zip(agent_cols, agents):
         with col:
             st.markdown(f'<div class="agent-chip"><strong>◉ &nbsp;{name}</strong><small>{subtitle}</small></div>', unsafe_allow_html=True)
-    st.markdown("**Structured agent messages**")
+    st.markdown("**How the agents reached this result**")
     for message in result["agent_messages"]:
-        st.markdown(f"**{message['source_agent']}** → `{message['target_agent']}` · `{message['status']}`")
-        st.json(message, expanded=False)
+        title = f"{message['source_agent'].replace('_', ' ').title()} → {message['target_agent'].replace('_', ' ').title()} · {message['status']}"
+        with st.expander(title):
+            for finding in message["findings"]:
+                st.write(finding)
+            if message["evidence"]:
+                st.dataframe(pd.DataFrame(message["evidence"]), width="stretch", hide_index=True, alt=f"Evidence sent by {message['source_agent']}")
+            else:
+                st.caption("No supporting measurements found by this agent.")
+            if message.get("received_message_ids"):
+                st.caption(f"Compared {len(message['received_message_ids'])} specialist messages.")
+            if experience == "Expert":
+                st.json(message, expanded=False)
     if result["ranked_candidates"]:
         st.markdown("**Confidence breakdown and other possible causes**")
         st.json(report["confidence_breakdown"], expanded=False)

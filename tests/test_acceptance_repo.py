@@ -211,6 +211,15 @@ def test_report_and_each_message_match_schema_and_are_directed(demo):
     assert all(item["source_message_id"] for item in result["report"]["supporting_evidence"])
 
 
+def test_reporting_agent_receives_correlator_output_as_structured_handoff(demo):
+    result = agents.run_diagnosis({"records": [demo["records"][3]], "topology": demo["topology"]})
+    reporter = next(message for message in result["agent_messages"] if message["source_agent"] == "reporting_agent")
+    correlator = next(message for message in result["agent_messages"] if message["source_agent"] == "correlation_agent")
+    assert reporter["target_agent"] == "orchestrator"
+    assert correlator["message_id"] in reporter["received_message_ids"]
+    assert result["report"]["suspected_root_cause"] in " ".join(reporter["findings"])
+
+
 def test_mixed_faults_keep_ranked_candidates():
     record = one_record({
         "link_utilization_pct": 94, "queue_drops": 160, "latency_ms": 280,
