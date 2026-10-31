@@ -214,23 +214,48 @@ st.session_state["current_payload"] = payload
 st.session_state["current_result"] = result
 st.session_state["current_scenario"] = scenario
 
-st.markdown('<div class="brandbar"><div class="brandmark">◈ &nbsp; NETCOOP <span>AI</span></div><div class="brandmeta">CAMPUS NETWORK / ALL SIGNALS, ONE DIAGNOSIS</div><div class="pill"><span class="dot"></span> DEMO LIVE</div></div>', unsafe_allow_html=True)
-st.markdown('<div class="eyebrow">THE CAMPUS NETWORK OPERATIONS CENTER</div>', unsafe_allow_html=True)
-st.markdown('<div class="hero-title">NETCOOP AI</div><div class="hero-sub">LIVE IN SIGHT</div><div class="hero-status">● &nbsp; SYNTHETIC MONITORING IS LIVE &nbsp; ✦</div>', unsafe_allow_html=True)
-
 scenario_record = records_by_scenario.get(scenario, {})
 observed_devices = ", ".join(r["device_id"] for r in result["records"]) or "Awaiting telemetry"
 scenario_heading = "UPLOADED TELEMETRY" if uploaded is not None else SCENARIO_LABELS.get(scenario, scenario).upper()
 scenario_device = "UPLOADED DATA" if uploaded is not None else str(scenario_record.get("device_id", "SAMPLE RECORD"))
-agent_state = "DIAGNOSED" if report["status"] == "diagnosed" else "NEEDS MORE EVIDENCE"
-st.markdown(f'''<div class="scoreboard">
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
-<div><div class="scorelabel redtext">● &nbsp; SELECTED SCENARIO</div><div class="scorevalue">{escape(scenario_heading)}</div><div class="scoremeta">FIXTURE RECORD · {escape(scenario_device)}</div></div>
-<div style="text-align:right"><div class="scorelabel bluetext">● &nbsp; AGENT RESULT</div><div class="scorevalue">{agent_state}</div><div class="scoremeta">{len(result["agent_messages"])} STRUCTURED HANDOFFS · {report["confidence"]:.0%} EVIDENCE SCORE</div></div>
-</div><div class="scoreline"></div>
-<div class="scoremeta">AFFECTED SCOPE &nbsp; {escape(observed_devices)} &nbsp;&nbsp; / &nbsp;&nbsp; SOURCE &nbsp; {"UPLOADED TELEMETRY" if uploaded is not None else "SYNTHETIC DATASET"}</div>
+diagnosed = report["status"] == "diagnosed"
+status_label = "PROBABLE CAUSE IDENTIFIED" if diagnosed else "MORE EVIDENCE NEEDED"
+cause_label = report["suspected_root_cause"] if diagnosed else "No reliable root cause yet"
+confidence_label = f"{report['confidence']:.0%}" if diagnosed else "—"
+confidence_note = "Evidence score" if diagnosed else "Insufficient validated signals"
+source_label = "Uploaded telemetry" if uploaded is not None else "Synthetic demo fixture"
+visible_evidence = [item for item in report["supporting_evidence"] if item["metric"] != "topology_scope"][:3]
+evidence_html = "".join(
+    f'<div class="diag-signal"><span>{escape(str(item["metric"]).replace("_", " "))}</span><b>{escape(str(item["value"]))} {escape(str(item["unit"]))}</b><small>{escape(str(item["device_id"]))}</small></div>'
+    for item in visible_evidence
+) or '<div class="diag-empty">No measurements passed the evidence threshold. Collect another time-aligned sample before assigning a cause.</div>'
+next_step = report["recommended_actions"][0] if report["recommended_actions"] else "Collect more time-aligned telemetry."
+st.markdown(f'''<style>
+.diagnosis-panel{{background:linear-gradient(135deg,#141416,#0b0b0c);border:1px solid #303034;border-radius:18px;padding:24px 26px 20px;margin:1rem 0 1.35rem;box-shadow:0 18px 50px #0008}}
+.diag-top{{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #2b2b2e;padding-bottom:14px}}
+.diag-kicker{{color:#99999f;font:500 .66rem 'DM Mono',monospace;letter-spacing:.13em;text-transform:uppercase}}
+.diag-status{{padding:6px 10px;border-radius:999px;background:{'#21100d' if diagnosed else '#211c0d'};border:1px solid {'#75382a' if diagnosed else '#6c5525'};color:{'#ff8a65' if diagnosed else '#ffd477'};font:700 .64rem 'DM Mono',monospace;letter-spacing:.07em}}
+.diag-main{{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:20px;align-items:center;padding:20px 0 15px}}
+.diag-label{{color:#ff9a67;font:500 .66rem 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase}}
+.diag-cause{{color:#f5f5f6;font:800 clamp(1.55rem,3.4vw,2.6rem)/1.08 'Barlow Condensed',Impact,sans-serif;letter-spacing:.025em;margin:6px 0 0;overflow-wrap:anywhere}}
+.diag-confidence{{text-align:right;border-left:1px solid #303034;padding-left:18px}}
+.diag-confidence b{{display:block;color:#08bff5;font:800 2rem/1 'Barlow Condensed',sans-serif}}
+.diag-confidence small{{display:block;color:#8b8b91;font: .62rem 'DM Mono',monospace;margin-top:5px;text-transform:uppercase;letter-spacing:.07em}}
+.diag-evidence{{display:flex;gap:9px;flex-wrap:wrap;margin:5px 0 16px}}
+.diag-signal{{min-width:125px;flex:1;background:#101013;border:1px solid #29292d;border-radius:10px;padding:9px 11px}}
+.diag-signal span,.diag-signal small{{display:block;color:#88888e;font: .61rem 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.06em}}
+.diag-signal b{{display:block;color:#ededf0;font-size:.9rem;margin:4px 0}}
+.diag-empty{{color:#aaa;font-size:.77rem;padding:8px 0}}
+.diag-bottom{{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-top:1px solid #2b2b2e;padding-top:13px;color:#999;font-size:.72rem}}
+.diag-next{{color:#e2e2e5;max-width:68%}}
+@media(max-width:650px){{.diagnosis-panel{{padding:17px}}.diag-main{{grid-template-columns:1fr;gap:12px}}.diag-confidence{{border-left:0;border-top:1px solid #303034;padding:12px 0 0;text-align:left;display:flex;align-items:baseline;gap:8px}}.diag-confidence b{{font-size:1.5rem}}.diag-bottom{{display:block}}.diag-next{{max-width:100%;margin-top:5px}}}}
+</style>
+<div class="diagnosis-panel">
+  <div class="diag-top"><div class="diag-kicker">NETCOOP AI &nbsp; / &nbsp; INCIDENT BRIEF</div><div class="diag-status">● &nbsp; {status_label}</div></div>
+  <div class="diag-main"><div><div class="diag-label">{('LIKELY ROOT CAUSE' if diagnosed else 'DIAGNOSIS')}</div><div class="diag-cause">{escape(str(cause_label))}</div></div><div class="diag-confidence"><b>{confidence_label}</b><small>{confidence_note}</small></div></div>
+  <div class="diag-evidence">{evidence_html}</div>
+  <div class="diag-bottom"><div><span class="diag-kicker">NEXT STEP</span><div class="diag-next">{escape(str(next_step))}</div></div><div style="text-align:right"><span class="diag-kicker">SCENARIO</span><div>{escape(scenario_heading)} · {escape(scenario_device)}</div><span class="diag-kicker">AFFECTED</span><div>{escape(observed_devices)}</div><span class="diag-kicker">SOURCE</span><div>{source_label}</div></div></div>
 </div>''', unsafe_allow_html=True)
-st.markdown('<div class="source-note">COLAB-INSPIRED SYNTHETIC FIXTURES · REPEATABLE SEED 20261031 · AGENT FINDINGS RECOMPUTED FROM SELECTED METRICS</div>', unsafe_allow_html=True)
 with st.expander("What is this scenario using?", expanded=False):
     st.caption("These are generated demo readings stored in data/sample_telemetry.json. Their metric values are repeatable for seed 20261031. The selected record is passed through the agents and correlator when selected. The agent rules and action wording are deterministic; no LLM or live network feed is connected.")
     st.download_button("Download the full synthetic dataset", data=json.dumps(demo, indent=2), file_name="netcoop_synthetic_telemetry.json", mime="application/json")
