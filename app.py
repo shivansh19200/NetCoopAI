@@ -21,6 +21,48 @@ SCENARIO_LABELS = {
     "malformed_input": "Malformed input",
 }
 
+
+def render_topology(topology: dict, highlighted: set[str]) -> str:
+    """Self-contained SVG with CSS-animated packet dots; no JS or external data."""
+    nodes = topology.get("devices", [])
+    links = topology.get("links", [])
+    positions = {
+        "gateway": (72, 158), "router": (255, 158), "switch": (465, 115),
+        "access_point": (660, 70), "service": (465, 258), "device": (660, 250),
+    }
+    coords = {}
+    for i, node in enumerate(nodes):
+        kind = str(node.get("type", "device")).lower()
+        base = positions.get(kind, (650, 300))
+        same = sum(1 for n in nodes[:i] if n.get("type") == kind)
+        coords[node.get("id")] = (base[0], base[1] + same * 54)
+    lines, packets, labels = [], [], []
+    for i, link in enumerate(links):
+        a, b = coords.get(link.get("source")), coords.get(link.get("target"))
+        if not a or not b: continue
+        d = f"M {a[0]+52} {a[1]+21} C {(a[0]+b[0])/2} {a[1]+21}, {(a[0]+b[0])/2} {b[1]+21}, {b[0]} {b[1]+21}"
+        high = float(link.get("utilization_pct", 0) or 0) >= 85 or link.get("target") in highlighted
+        color = "#ff747e" if high else "#27465c"
+        lines.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{2.5 if high else 1.5}"/>')
+        packets.append(f'<circle r="3.5" fill="{"#ff8f95" if high else "#4de2c5"}"><animateMotion dur="{3.2 + i*.65}s" begin="-{i*.7}s" repeatCount="indefinite" path="{d}"/></circle>')
+        midx, midy = (a[0]+b[0]+52)/2, (a[1]+b[1]+42)/2 - 9
+        labels.append(f'<text x="{midx}" y="{midy}" class="load">{float(link.get("utilization_pct",0) or 0):.0f}%</text>')
+    cards = []
+    for node in nodes:
+        x, y = coords.get(node.get("id"), (0, 0))
+        is_hot = node.get("id") in highlighted
+        color = "#ff747e" if is_hot else "#4de2c5"
+        label = escape(str(node.get("label", node.get("id", "Node")))[:22])
+        node_id = escape(str(node.get("id", ""))[:20])
+        cards.append(f'<g><rect x="{x}" y="{y}" width="112" height="43" rx="10" fill="#102638" stroke="{color}" stroke-width="{1.7 if is_hot else 1}"/><circle cx="{x+13}" cy="{y+14}" r="3.5" fill="{color}"/><text x="{x+23}" y="{y+17}" class="label">{label}</text><text x="{x+12}" y="{y+33}" class="id">{node_id}</text></g>')
+    return f'''<!doctype html><html><head><meta charset="utf-8"><style>
+    *{{box-sizing:border-box}} body{{margin:0;background:#091824;font-family:Manrope,Arial,sans-serif;color:#dfeaf2}}
+    .frame{{height:370px;border:1px solid #1b3548;border-radius:14px;background:radial-gradient(ellipse at 45% 45%,#102536,#091824 70%);overflow:hidden;position:relative}}
+    svg{{width:100%;height:100%}} .label{{font-size:9px;fill:#dce8f1;font-weight:700}} .id{{font-size:7px;fill:#7891a4;font-family:monospace}} .load{{font-size:9px;fill:#8ea6b9;font-family:monospace}}
+    .legend{{position:absolute;right:14px;top:13px;font-size:9px;color:#859cae;font-family:monospace;letter-spacing:.06em}} .legend b{{color:#4de2c5;font-weight:400}} .key{{color:#ff858c!important}}
+    </style></head><body><div class="frame"><div class="legend"><b>●</b> LIVE FLOW &nbsp; <b class="key">●</b> ELEVATED</div><svg viewBox="0 0 800 340" preserveAspectRatio="xMidYMid meet">{''.join(lines)}{''.join(labels)}{''.join(packets)}{''.join(cards)}</svg></div></body></html>'''
+
+
 st.set_page_config(page_title="NetCoop AI | Network diagnostics", page_icon="◈", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
@@ -209,43 +251,3 @@ if result["ranked_candidates"]:
 st.download_button("Download diagnostic report · JSON", data=json.dumps(report, indent=2), file_name=f"{report['incident_id'].lower()}_report.json", mime="application/json")
 st.caption("NetCoop AI prototype · synthetic data · all corrective actions remain recommendations for a human operator.")
 
-
-def render_topology(topology: dict, highlighted: set[str]) -> str:
-    """Self-contained SVG with CSS-animated packet dots; no JS or external data."""
-    nodes = topology.get("devices", [])
-    links = topology.get("links", [])
-    positions = {
-        "gateway": (72, 158), "router": (255, 158), "switch": (465, 115),
-        "access_point": (660, 70), "service": (465, 258), "device": (660, 250),
-    }
-    coords = {}
-    for i, node in enumerate(nodes):
-        kind = str(node.get("type", "device")).lower()
-        base = positions.get(kind, (650, 300))
-        same = sum(1 for n in nodes[:i] if n.get("type") == kind)
-        coords[node.get("id")] = (base[0], base[1] + same * 54)
-    lines, packets, labels = [], [], []
-    for i, link in enumerate(links):
-        a, b = coords.get(link.get("source")), coords.get(link.get("target"))
-        if not a or not b: continue
-        d = f"M {a[0]+52} {a[1]+21} C {(a[0]+b[0])/2} {a[1]+21}, {(a[0]+b[0])/2} {b[1]+21}, {b[0]} {b[1]+21}"
-        high = float(link.get("utilization_pct", 0) or 0) >= 85 or link.get("target") in highlighted
-        color = "#ff747e" if high else "#27465c"
-        lines.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{2.5 if high else 1.5}"/>')
-        packets.append(f'<circle r="3.5" fill="{"#ff8f95" if high else "#4de2c5"}"><animateMotion dur="{3.2 + i*.65}s" begin="-{i*.7}s" repeatCount="indefinite" path="{d}"/></circle>')
-        midx, midy = (a[0]+b[0]+52)/2, (a[1]+b[1]+42)/2 - 9
-        labels.append(f'<text x="{midx}" y="{midy}" class="load">{float(link.get("utilization_pct",0) or 0):.0f}%</text>')
-    cards = []
-    for node in nodes:
-        x, y = coords.get(node.get("id"), (0, 0))
-        is_hot = node.get("id") in highlighted
-        color = "#ff747e" if is_hot else "#4de2c5"
-        label = escape(str(node.get("label", node.get("id", "Node")))[:22])
-        node_id = escape(str(node.get("id", ""))[:20])
-        cards.append(f'<g><rect x="{x}" y="{y}" width="112" height="43" rx="10" fill="#102638" stroke="{color}" stroke-width="{1.7 if is_hot else 1}"/><circle cx="{x+13}" cy="{y+14}" r="3.5" fill="{color}"/><text x="{x+23}" y="{y+17}" class="label">{label}</text><text x="{x+12}" y="{y+33}" class="id">{node_id}</text></g>')
-    return f'''<!doctype html><html><head><meta charset="utf-8"><style>
-    *{{box-sizing:border-box}} body{{margin:0;background:#091824;font-family:Manrope,Arial,sans-serif;color:#dfeaf2}}
-    .frame{{height:370px;border:1px solid #1b3548;border-radius:14px;background:radial-gradient(ellipse at 45% 45%,#102536,#091824 70%);overflow:hidden;position:relative}}
-    svg{{width:100%;height:100%}} .label{{font-size:9px;fill:#dce8f1;font-weight:700}} .id{{font-size:7px;fill:#7891a4;font-family:monospace}} .load{{font-size:9px;fill:#8ea6b9;font-family:monospace}}
-    .legend{{position:absolute;right:14px;top:13px;font-size:9px;color:#859cae;font-family:monospace;letter-spacing:.06em}} .legend b{{color:#4de2c5;font-weight:400}} .key{{color:#ff858c!important}}
-    </style></head><body><div class="frame"><div class="legend"><b>●</b> LIVE FLOW &nbsp; <b class="key">●</b> ELEVATED</div><svg viewBox="0 0 800 340" preserveAspectRatio="xMidYMid meet">{''.join(lines)}{''.join(labels)}{''.join(packets)}{''.join(cards)}</svg></div></body></html>'''
