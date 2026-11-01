@@ -36,24 +36,32 @@ def percentile95(values: list[float]) -> float:
     return sorted(values)[max(0, math.ceil(.95 * len(values)) - 1)]
 
 
-def run_benchmark(sizes=(1, 12, 48, 100, 338, 1000)) -> list[dict]:
+def run_benchmark(sizes=(1, 12, 48, 100, 5000)) -> list[dict]:
     rows = []
     for size in sizes:
-        payload = payload_for_size(size)
-        iterations = 20 if size == 1 else 12 if size == 12 else 8 if size == 48 else 5 if size == 100 else 3
+        if size == 5000:
+            payload = {"records": [{"device_id": f"NODE_{i}", "device_type": "switch",
+                                     "status": "Healthy", "metrics": {}} for i in range(size)]}
+        else:
+            payload = payload_for_size(size)
+        iterations = 1 if size == 5000 else 20 if size == 1 else 12 if size == 12 else 8 if size == 48 else 5 if size == 100 else 3
         run_diagnosis(payload)  # warm-up
         durations = []
         for _ in range(iterations):
             start = time.perf_counter()
             run_diagnosis(payload)
             durations.append((time.perf_counter() - start) * 1000)
-        tracemalloc.start()
-        run_diagnosis(payload)
-        _, peak = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
+        if size < 5000:
+            tracemalloc.start()
+            run_diagnosis(payload)
+            _, peak = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peak_mb = peak / (1024 * 1024)
+        else:
+            peak_mb = None
         rows.append({"records": size, "iterations": iterations, "median_ms": statistics.median(durations),
                      "p95_ms": percentile95(durations), "records_per_second": size / (statistics.median(durations) / 1000),
-                     "peak_python_mb": peak / (1024 * 1024)})
+                     "peak_python_mb": peak_mb})
     return rows
 
 
@@ -65,12 +73,12 @@ def main() -> None:
     lines = ["# Diagnosis performance benchmark", "",
              f"Run date: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
              f"Environment: Python {platform.python_version()}, {platform.platform()}", "",
-             "This measures one complete in-process `run_diagnosis()` call at several input sizes. It uses jittered synthetic link-congestion readings, one device, and the bundled topology. Each size is warmed up once; the table reports repeated-run median and 95th percentile latency. Peak memory is Python allocation traced by `tracemalloc`, not total process memory.", "",
+             "This measures one complete in-process diagnosis call at several input sizes. Up to 1,000 rows are jittered link-congestion samples from one device; the 5,000-row case uses one healthy sample each from 5,000 devices. Each size is warmed up once; the table reports repeated-run median and 95th percentile latency. Peak memory is Python allocation traced by tracemalloc, not total process memory.", "",
              "These numbers describe this machine and software version. They are a repeatable baseline, not a service-level guarantee. The HTTP service and Streamlit rendering are not included.", "",
              "| Records per diagnosis | Timed runs | Median (ms) | P95 (ms) | Records/second | Peak traced Python memory (MiB) |",
              "|---:|---:|---:|---:|---:|---:|"]
     for row in results:
-        lines.append(f"| {row['records']} | {row['iterations']} | {row['median_ms']:.2f} | {row['p95_ms']:.2f} | {row['records_per_second']:.0f} | {row['peak_python_mb']:.2f} |")
+        lines.append(f"| {row['records']} | {row['iterations']} | {row['median_ms']:.2f} | {row['p95_ms']:.2f} | {row['records_per_second']:.0f} | {row['peak_python_mb']:.2f} |" if row['peak_python_mb'] is not None else f"| {row['records']} | {row['iterations']} | {row['median_ms']:.2f} | {row['p95_ms']:.2f} | {row['records_per_second']:.0f} | not measured |")
     lines += ["", "Re-run with `python scripts/performance_benchmark.py`. The benchmark creates fresh synthetic inputs for each size; it does not change the sample dataset or access a network device.", ""]
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)

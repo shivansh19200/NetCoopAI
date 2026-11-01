@@ -57,7 +57,7 @@ def ev(metric, value, unit, device="EDGE_1"):
 
 def test_nine_synthetic_scenarios_have_documented_verdicts(demo):
     expected = {
-        "normal": "insufficient_evidence",
+        "normal": "healthy",
         "latency_spike": "Latency spike",
         "hardware_failure": "Hardware failure",
         "link_congestion": "Link congestion",
@@ -191,15 +191,16 @@ def test_clear_multi_agent_cases_receive_stronger_confidence_than_single_family(
     assert interop["confidence"] < clean["confidence"] - 0.15
 
 
-def test_fractional_percent_and_seconds_alias_are_normalized():
+def test_unitless_percentages_are_not_guessed_as_fractions():
     result = agents.run_diagnosis({"records": [one_record({
-        "link_utilization_pct": 0.94, "cpu_utilization_pct": 0.8,
-        "packet_loss_pct": 0.05, "latency": 0.28,
+        "link_utilization_pct": 1, "cpu_utilization_pct": 0.2,
+        "packet_loss_pct": 0.5, "latency": 0.28,
     }, )]})
-    assert result["records"][0]["metrics"]["link_utilization_pct"] == 94
-    assert result["records"][0]["metrics"]["cpu_utilization_pct"] == 80
-    assert result["records"][0]["metrics"]["latency_ms"] == .28
-    assert any(x.get("confidence_penalty") for x in result["records"][0]["normalization"])
+    assert result["records"][0]["metrics"]["link_utilization_pct"] == 1
+    assert result["records"][0]["metrics"]["cpu_utilization_pct"] == .2
+    assert result["records"][0]["metrics"]["packet_loss_pct"] == .5
+    assert not any(x.get("confidence_penalty") for x in result["records"][0]["normalization"])
+    assert any("looks like seconds" in warning for warning in result["warnings"])
 
 
 def test_report_and_each_message_match_schema_and_are_directed(demo):

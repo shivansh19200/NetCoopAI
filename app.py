@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 from netcoop.agents import run_diagnosis
-from netcoop.dashboard_views import build_telemetry_view
+from netcoop.dashboard_views import build_telemetry_view, confidence_explanation, distinct_problem_count, warning_summary
 from netcoop.workflow_store import WorkflowStore
 
 ROOT = Path(__file__).parent
@@ -53,10 +53,11 @@ def render_topology(topology: dict, highlighted: set[str]) -> str:
         d = f"M {a[0]+77} {a[1]+27} C {(a[0]+b[0])/2} {a[1]+27}, {(a[0]+b[0])/2} {b[1]+27}, {b[0]} {b[1]+27}"
         try: utilization = float(link.get("utilization_pct", 0) or 0)
         except (TypeError, ValueError): utilization = 0.0
-        high = utilization >= 70 or str(link.get("target")) in highlighted
+        high = str(link.get("source")) in highlighted or str(link.get("target")) in highlighted
         color = "#ff623e" if high else "#08bff5"
         lines.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{2.5 if high else 1.5}"/>')
-        packets.append(f'<circle r="3.5" fill="{"#ff9a39" if high else "#08bff5"}"><animateMotion dur="{3.2 + i*.65}s" begin="-{i*.7}s" repeatCount="indefinite" path="{d}"/></circle>')
+        if high:
+            packets.append(f'<circle r="3.5" fill="#ffb629"><animateMotion dur="{3.2 + i*.65}s" begin="-{i*.7}s" repeatCount="indefinite" path="{d}"/></circle>')
         midx, midy = (a[0]+b[0]+77)/2, (a[1]+b[1]+54)/2 - 10
         labels.append(f'<text x="{midx}" y="{midy}" class="load">{utilization:.0f}%</text>')
     cards = []
@@ -150,13 +151,13 @@ html, body, [class*="css"] { font-family:'Manrope',sans-serif; }
 
 .section-title { color:#06bafa;font:800 1.55rem 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;text-shadow:0 0 20px #00a7f555; }
 
-.section-note { color:#85858b;font-size:.73rem; }
+.section-note { color:#b5b5bb;font-size:.73rem; }
 
 .agent-chip { background:linear-gradient(145deg,#171719,#0c0c0d);border:1px solid #2a2a2d;border-radius:11px;padding:14px 12px;height:100%;box-shadow:inset 0 1px #ffffff08; }
 
 .agent-chip strong { color:#f5f5f6;font-size:.76rem; }
 
-.agent-chip small { display:block;color:#89898e;margin-top:5px;font-size:.65rem; }
+.agent-chip small { display:block;color:#b5b5bb;margin-top:5px;font-size:.65rem; }
 
 .mono { font-family:'DM Mono',monospace; }
 
@@ -169,6 +170,7 @@ div[data-testid="stDownloadButton"] button { background:linear-gradient(90deg,#f
 div[data-testid="stButton"] button { border-radius:10px; }
 
 .stAlert { border-radius:11px; }
+[data-testid="stPopover"] button { color:#f6c453!important;font-size:1.1rem!important; }
 [data-testid="stSidebar"] { color:#f1f1f3; }
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,[data-testid="stSidebar"] label,[data-testid="stSidebar"] [data-testid="stCaptionContainer"] { color:#c4c4ca!important; }
 .brandmeta,.source-note,.metric-note { color:#b5b5bb; }
@@ -381,13 +383,23 @@ def display_device(device_id):
     return device_labels.get(str(device_id), str(device_id).replace("_", " ").title())
 
 affected_devices = list(dict.fromkeys(report.get("affected_devices", [])))
-observed_devices = ", ".join(display_device(device) for device in affected_devices) or "Awaiting readings"
+shown_devices = [display_device(device) for device in affected_devices[:5]]
+observed_devices = ", ".join(shown_devices) or "None identified"
+if len(affected_devices) > 5:
+    observed_devices += f" +{len(affected_devices) - 5} more"
 scenario_heading = "UPLOADED TELEMETRY" if uploaded is not None else SCENARIO_LABELS.get(scenario, scenario).upper()
 scenario_device = "Uploaded readings" if uploaded is not None else display_device(scenario_record.get("device_id", "Sample device"))
 if uploaded is not None: st.info("Uploaded telemetry is active and overrides the selected demo scenario.", icon=":material/upload_file:")
 diagnosed = report["status"] == "diagnosed"
 ambiguous = report["status"] == "ambiguous"
-status_label = "AMBIGUOUS" if ambiguous else "PROBABLE CAUSE IDENTIFIED" if diagnosed else "NOT ENOUGH EVIDENCE"
+status_copy = {
+    "diagnosed": ("PROBABLE CAUSE IDENTIFIED", "#21100d", "#75382a", "#ff8a65"),
+    "healthy": ("ALL CLEAR", "#10251a", "#286044", "#7fe0a4"),
+    "low_confidence": ("NEEDS MORE DATA", "#271e0b", "#705620", "#ffd477"),
+    "ambiguous": ("MORE THAN ONE POSSIBILITY", "#271e0b", "#705620", "#ffd477"),
+    "insufficient_evidence": ("NOT ENOUGH READINGS", "#271e0b", "#705620", "#ffd477"),
+}
+status_label, status_bg, status_border, status_text = status_copy.get(report["status"], status_copy["insufficient_evidence"])
 cause_label = report["suspected_root_cause"]
 confidence_label = f"{report['confidence']:.0%}"
 confidence_word = "High" if report["confidence"] >= .75 else "Medium" if report["confidence"] >= .45 else "Low"
@@ -442,9 +454,9 @@ st.markdown(f'''<style>
 
 .diag-top{{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #2b2b2e;padding-bottom:14px}}
 
-.diag-kicker{{color:#99999f;font:500 .66rem 'DM Mono',monospace;letter-spacing:.13em;text-transform:uppercase}}
+.diag-kicker{{color:#c2c2c8;font:500 .66rem 'DM Mono',monospace;letter-spacing:.13em;text-transform:uppercase}}
 
-.diag-status{{padding:6px 10px;border-radius:999px;background:{'#21100d' if diagnosed else '#211c0d'};border:1px solid {'#75382a' if diagnosed else '#6c5525'};color:{'#ff8a65' if diagnosed else '#ffd477'};font:700 .64rem 'DM Mono',monospace;letter-spacing:.07em}}
+.diag-status{{padding:6px 10px;border-radius:999px;background:{status_bg};border:1px solid {status_border};color:{status_text};font:700 .64rem 'DM Mono',monospace;letter-spacing:.07em}}
 
 .diag-main{{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:20px;align-items:center;padding:20px 0 15px}}
 
@@ -462,7 +474,7 @@ st.markdown(f'''<style>
 
 .diag-signal{{min-width:125px;flex:1;background:#101013;border:1px solid #29292d;border-radius:10px;padding:9px 11px}}
 
-.diag-signal span,.diag-signal small{{display:block;color:#88888e;font: .61rem 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.06em}}
+.diag-signal span,.diag-signal small{{display:block;color:#b5b5bb;font: .68rem 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.06em}}
 
 .diag-signal b{{display:block;color:#ededf0;font-size:.9rem;margin:4px 0}}
 
@@ -482,18 +494,10 @@ st.markdown(f'''<style>
   <div class="diag-bottom"><div><span class="diag-kicker">WHAT TO DO NEXT</span><div class="diag-next">{escape(str(next_step))}</div></div><div style="text-align:right"><span class="diag-kicker">SCENARIO</span><div>{escape(scenario_heading)} · {escape(scenario_device)}</div><span class="diag-kicker">AFFECTED</span><div>{escape(observed_devices)}</div><span class="diag-kicker">SOURCE</span><div>{source_label}</div></div></div>
 </div>''', unsafe_allow_html=True)
 if result["warnings"]:
-    friendly_warnings = []
-    for warning in result["warnings"]:
-        lower = warning.lower()
-        if "latency looked like seconds" in lower:
-            friendly_warnings.append("Latency looked like seconds, so we ignored it; confidence is lower.")
-        elif "0-1 fraction" in lower:
-            friendly_warnings.append("A percentage looked like a 0-1 fraction, so we ignored it; confidence is lower.")
-        elif "topology" in lower:
-            friendly_warnings.append("Some topology details were missing or skipped, so affected network scope may be limited.")
-        elif "stale" in lower:
-            friendly_warnings.append("Some uploaded readings are over an hour old; confidence is lower.")
-    for note in dict.fromkeys(friendly_warnings): st.info(note)
+    st.info(warning_summary(result["warnings"]), icon=":material/info:")
+    with st.expander("See input details"):
+        for warning in result["warnings"]:
+            st.write("• " + warning)
 records = result["records"]
 all_metrics = [r["metrics"] for r in records]
 def max_metric(name):
@@ -510,21 +514,38 @@ def metric_card(label, value, note, suffix=""):
     st.markdown(f'<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value">{value_text}</div><div class="metric-note">{note}</div></div>', unsafe_allow_html=True)
 
 st.caption(f"{experience} view · " + ("plain-language findings" if experience == "Beginner" else "raw measurements, units, and diagnostic scoring"))
-cols = st.columns(6 if experience == "Expert" else 4)
-with cols[0]: metric_card("Likely problem", report["suspected_root_cause"].replace(" ", "\u00a0"), report["status"].replace("_", " ").title())
-penalty_total=sum(report["confidence_breakdown"].get("penalties",{}).values())+report["confidence_breakdown"].get("agent_failures",0)
-confidence_detail=f"Base {report['confidence_breakdown'].get('base',0):.0%} − penalties {penalty_total:.0%} · evidence coverage, not severity"
-with cols[1]: metric_card("Confidence", report["confidence"] * 100, confidence_detail, "%")
-with cols[2]: metric_card("Response time", max_metric("latency_ms"), "Slowest reading", " ms")
-with cols[3]: metric_card("Packets lost", max_metric("packet_loss_pct"), "Highest share lost", "%")
+problem_count = distinct_problem_count(report)
+data_quality = "Poor" if any("ignored" in item.lower() or "invalid" in item.lower() for item in result["warnings"]) else "Partial" if result["warnings"] else "Good"
+cols = st.columns(3)
+with cols[0]: metric_card("Problems found", problem_count, "Different readings outside safe limits")
+with cols[1]: metric_card("Devices affected", len(set(report.get("affected_devices", []))), "Including downstream devices")
+with cols[2]: metric_card("Data quality", data_quality, warning_summary(result["warnings"]))
+
+incidents = report.get("incidents", [])
+if incidents:
+    st.markdown('<div class="section-title">Problems by device</div>', unsafe_allow_html=True)
+    for incident in incidents:
+        names = ", ".join(display_device(device) for device in dict.fromkeys(incident.get("device_ids", [])))
+        with st.expander(f"{names} · {incident['cause']} · {incident['confidence']:.0%}"):
+            st.progress(float(incident["confidence"]), text=f"{incident['confidence']:.0%} confidence · {incident['status'].replace('_', ' ')}")
+            for item in incident.get("evidence", []):
+                label, detail = concise_evidence(item)
+                st.write(f"**{label}:** {detail}")
+            if incident.get("recommended_actions"):
+                st.write("**What to do next:** " + incident["recommended_actions"][0])
+elif report["status"] == "healthy":
+    st.success("No problems found in the available readings.")
+
 if experience == "Expert":
-    with cols[4]: metric_card("CPU", max_metric("cpu_utilization_pct"), "Highest device reading", "%")
-    with cols[5]: metric_card("Agent handoffs", len(result["agent_messages"]), "Validated messages")
+    with st.expander("Expert confidence details"):
+        st.json(report["confidence_breakdown"], expanded=False)
+else:
+    st.caption("Why this confidence? " + confidence_explanation(report))
 
 trace_tab, json_tab = st.tabs(["Team conversation", "JSON report"])
 with trace_tab:
     trace = result["agent_messages"]
-    with st.popover("Help", help="Why are there several messages?"):
+    with st.popover(" ", icon=":material/lightbulb:", help="Why are there several messages?"):
         st.write("Each helper checks a different part of the network. Large counts are readings × metric types, not separate devices. The slider replays the conversation in order.")
     selected_trace = st.slider("Show messages through", 1, max(1, len(trace)), len(trace), key="trace_replay")
     agent_names = {"performance_agent": "Speed and Wi-Fi helper", "infrastructure_agent": "Device health helper",
@@ -561,7 +582,7 @@ with json_tab:
 topology_title, topology_help = st.columns([10, 1])
 with topology_title: st.markdown('<div class="section-title">Network map</div>', unsafe_allow_html=True)
 with topology_help:
-    with st.popover("Help", help="What does this map show?"):
+    with st.popover(" ", icon=":material/lightbulb:", help="What does this map show?"):
         st.write("Boxes are network devices. Lines are connections. Orange marks the likely problem and devices that may be affected downstream.")
 highlighted=set(report["affected_devices"])|{e["device_id"] for e in report["supporting_evidence"]}
 if topology.get("devices"):
@@ -573,7 +594,7 @@ with left:
     snapshot_title, snapshot_help = st.columns([10, 1])
     with snapshot_title: st.markdown('<div class="section-title">Device readings</div>', unsafe_allow_html=True)
     with snapshot_help:
-        with st.popover("Help", help="How should I read this table?"):
+        with st.popover(" ", icon=":material/lightbulb:", help="How should I read this table?"):
             st.write("Each row is one device. Readings counts its time samples. The summary shows values that crossed an alert limit.")
     view_data = build_telemetry_view(records, experience, topology.get("devices", []))
     help_columns = {name: st.column_config.NumberColumn(name, help=metric_help[name], format="%.1f") for name in metric_help if name in view_data["columns"]} if experience == "Expert" else {}
@@ -581,7 +602,7 @@ with left:
     trend_title, trend_help = st.columns([10, 1])
     with trend_title: st.markdown('<div class="section-title">Reading trends</div>', unsafe_allow_html=True)
     with trend_help:
-        with st.popover("Help", help="What do these charts mean?"):
+        with st.popover(" ", icon=":material/lightbulb:", help="What do these charts mean?"):
             st.write("Each dot is one reading. The blue line runs from older readings on the left to newer ones on the right. The dashed red line is the alert limit. Values above it are high; Wi-Fi signal is weak below its line.")
     trend_specs = [("latency_ms",100),("packet_loss_pct",2),("link_utilization_pct",70),("cpu_utilization_pct",85),("signal_strength_dbm",-75)]
     trend_labels = {"latency_ms":"Response time", "packet_loss_pct":"Packets lost", "link_utilization_pct":"Link use", "cpu_utilization_pct":"CPU use", "signal_strength_dbm":"Wi-Fi signal"}
@@ -609,7 +630,7 @@ with left:
                 chart_title, chart_help = st.columns([8, 1])
                 with chart_title: st.markdown(f"**{trend_labels[metric]}** · {count_label}")
                 with chart_help:
-                    with st.popover("Help", help=f"About {trend_labels[metric].lower()}"):
+                    with st.popover(" ", icon=":material/lightbulb:", help=f"About {trend_labels[metric].lower()}"):
                         st.write(trend_help_text[metric])
                         st.caption(f"Dashed red line: alert limit at {threshold} {unit}.")
                 st.markdown(spark,unsafe_allow_html=True)
@@ -622,12 +643,16 @@ with right:
         report_title, report_help = st.columns([8, 1])
         with report_title: st.markdown('<div class="section-title">Diagnosis</div>', unsafe_allow_html=True)
         with report_help:
-            with st.popover("Help", help="What does this result mean?"):
+            with st.popover(" ", icon=":material/lightbulb:", help="What does this result mean?"):
                 st.write("This is the most likely cause based on the readings. Check the evidence and suggested next step before acting.")
-        if report["status"] == "diagnosed":
+        if report["status"] in {"diagnosed", "healthy"}:
             st.success(report["suspected_root_cause"])
+        elif report["status"] == "low_confidence":
+            st.warning("Needs more data")
+        elif report["status"] == "ambiguous":
+            st.warning("More than one possible cause")
         else:
-            st.warning("Insufficient evidence for a reliable root-cause claim")
+            st.warning("Not enough readings yet")
         st.caption(f"Confidence: {report['confidence']:.0%}")
         if report.get("narrative"):
             st.markdown("**AI summary**")
@@ -678,7 +703,7 @@ for col, (agent_id, label, role) in zip(specialist_cols, specialists):
         card_title, card_help = st.columns([5, 1])
         with card_title: st.markdown(f"**{label}**")
         with card_help:
-            with st.popover("Help", help=f"What does {label.lower()} check?"):
+            with st.popover(" ", icon=":material/lightbulb:", help=f"What does {label.lower()} check?"):
                 st.write(role + ".")
         if message.get("evidence"):
             grouped = {}
@@ -740,16 +765,12 @@ with st.expander("Technical details", expanded=False):
             if experience == "Expert":
                 st.json(message, expanded=False)
     if result["ranked_candidates"]:
-        st.markdown("**Confidence breakdown and other possible causes**")
-        st.json(report["confidence_breakdown"], expanded=False)
+        st.markdown("**Other possible causes**")
         st.dataframe(pd.DataFrame([{"Candidate": c["cause"], "Score": c["score"], "Signals": c["distinct_signals"]} for c in result["ranked_candidates"]]), width="stretch", hide_index=True, alt="Ranked possible causes and evidence scores")
 
     st.download_button("Download diagnostic report · JSON", data=json.dumps(report, indent=2), file_name=f"{report['incident_id'].lower()}_report.json", mime="application/json")
     st.caption("NetCoop AI · " + ("deterministic agents + Groq advisory" if model_review_active else "deterministic rule-based agents") + " · synthetic telemetry.")
-    st.markdown("**Schema warnings**")
-    if result["warnings"]:
-        for warning in result["warnings"]: st.warning(warning)
-    else: st.caption("No input warnings.")
+
     st.caption("Optional MCP server: run `mcp run mcp_server.py` for local tool access.")
 
     st.markdown("**Human review · pause/resume · remediation simulation**")

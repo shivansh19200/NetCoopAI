@@ -1,6 +1,7 @@
 {
   "dataset_version": "1.0",
   "seed": 20261031,
+  "fixture": true,
   "topology": {
     "devices": [
       {
@@ -81,7 +82,7 @@
   },
   "records": [
     {
-      "timestamp": "2026-10-31T21:20:23.735396Z",
+      "timestamp": "2026-11-01T04:03:16.967228Z",
       "device_id": "SW_CAMPUS_5",
       "device_type": "switch",
       "site": "Campus core",
@@ -97,7 +98,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-10-31T21:20:23.735396Z",
+      "timestamp": "2026-11-01T04:03:16.967228Z",
       "device_id": "SW_CAMPUS_4",
       "device_type": "switch",
       "site": "Campus core",
@@ -113,7 +114,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-10-31T21:20:23.735396Z",
+      "timestamp": "2026-11-01T04:03:16.967228Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus core",
@@ -129,7 +130,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-10-31T21:20:23.735396Z",
+      "timestamp": "2026-11-01T04:03:16.967228Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -145,7 +146,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-10-31T21:20:23.735396Z",
+      "timestamp": "2026-11-01T04:03:16.967228Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -163,7 +164,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-10-31T21:20:23.735396Z",
+      "timestamp": "2026-11-01T04:03:16.967228Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -180,7 +181,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-10-31T21:20:23.735396Z",
+      "timestamp": "2026-11-01T04:03:16.967228Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -194,7 +195,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-10-31T21:20:23.735396Z",
+      "timestamp": "2026-11-01T04:03:16.967228Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -214,7 +215,7 @@
       }
     },
     {
-      "timestamp": "2026-10-31T21:20:23.735396+00:00",
+      "timestamp": "2026-11-01T04:03:16.967228+00:00",
       "device_id": "BROKEN_NODE",
       "metrics": {
         "latency_ms": "fast",

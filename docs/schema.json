@@ -75,7 +75,7 @@
       "required": ["incident_id", "status", "suspected_root_cause", "confidence", "affected_devices", "supporting_evidence", "alternative_causes", "tied_candidates", "ranked_candidates", "recommended_actions", "evidence_sources", "limitations", "conflicts", "confidence_breakdown"],
       "properties": {
         "incident_id": {"type": "string"},
-        "status": {"enum": ["diagnosed", "ambiguous", "insufficient_evidence"]},
+          "status": {"enum": ["diagnosed", "ambiguous", "insufficient_evidence", "healthy", "low_confidence"]},
         "suspected_root_cause": {"type": "string"},
         "confidence": {"type": "number", "minimum": 0, "maximum": 0.95},
         "affected_devices": {"type": "array", "items": {"type": "string"}},
@@ -88,6 +88,7 @@
         "limitations": {"type": "array", "items": {"type": "string"}},
         "conflicts": {"type": "array", "items": {"$ref": "#/$defs/conflict"}},
         "confidence_breakdown": {"type": "object"},
+          "incidents": {"type":"array","items":{"type":"object","required":["incident_id","device_ids","segment","cause","confidence","status","evidence"],"properties":{"incident_id":{"type":"string"},"device_ids":{"type":"array","items":{"type":"string"}},"segment":{"type":"string"},"cause":{"type":"string"},"confidence":{"type":"number","minimum":0,"maximum":0.95},"status":{"enum":["diagnosed","ambiguous","insufficient_evidence","healthy","low_confidence"]},"evidence":{"type":"array","items":{"$ref":"#/$defs/evidence"}},"recommended_actions":{"type":"array","items":{"type":"string"}}},"additionalProperties":true}},
         "model_review": {"$ref": "#/$defs/model_review"}
       },
       "additionalProperties": true

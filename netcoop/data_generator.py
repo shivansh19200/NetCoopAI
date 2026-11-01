@@ -152,7 +152,7 @@ def build_demo_data(seed: int = SEED) -> dict:
             {"source": "CAMPUS_CORE_01", "target": "CAMPUS_DNS_01", "utilization_pct": 18},
         ],
     }
-    return {"dataset_version": "1.0", "seed": seed, "topology": topology, "records": records}
+    return {"dataset_version": "1.0", "seed": seed, "fixture": True, "topology": topology, "records": records}
 
 
 def build_demo_timeseries(seed: int = SEED, samples_per_scenario: int = 12, interval_minutes: int = 4) -> dict:
@@ -203,7 +203,7 @@ def build_demo_timeseries(seed: int = SEED, samples_per_scenario: int = 12, inte
         row = next(row for row in base["records"] if row["scenario"] == name)
         row["timestamp"] = latest.isoformat().replace("+00:00", "Z")
         records.append(row)
-    return {"dataset_version": "1.1", "seed": seed, "topology": base["topology"], "records": records,
+    return {"dataset_version": "1.1", "seed": seed, "fixture": True, "topology": base["topology"], "records": records,
             "synthetic_history": {"samples_per_scenario": samples_per_scenario, "interval_minutes": interval_minutes,
                                   "series_scenarios": series_names}}
 

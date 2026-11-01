@@ -6,6 +6,15 @@ defaults:
   cpu_utilization_pct: 85
   memory_utilization_pct: 90
   queue_drops: 50
+  retransmissions_pct: 15
+  interface_errors: 10
+  signal_strength_dbm: -75
+  congestion_link_anchor_pct: 70
+  congestion_queue_anchor: 50
+  connectivity_link_high_pct: 85
+  hardware_signature_cpu_pct: 95
+  diagnosis_minimum_score: 0.24
+  stale_penalty: 0.10
 device_types:
   access_point:
     cpu_utilization_pct: 90
@@ -13,3 +22,19 @@ device_types:
   router:
     cpu_utilization_pct: 80
     link_utilization_pct: 75
+cause_priority:
+  Hardware failure: 6
+  DNS/DHCP service failure: 5
+  Weak Wi-Fi: 4
+  Ethernet/interface fault: 3
+  Link congestion: 2
+  Latency spike: 1
+scoring:
+  family_weight: 0.36
+  additional_signal_weight: 0.05
+  max_families: 3
+  max_additional_signals: 3
+  maximum: 0.95
+  single_family_cap: 0.55
+  hardware_signature_priority: 0.95
+  ambiguous_tie_margin: 0.05

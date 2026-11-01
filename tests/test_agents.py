@@ -17,11 +17,12 @@ class NetCoopAcceptanceTests(unittest.TestCase):
         for left, right in zip(self.dataset["records"], first["records"]):
             self.assertEqual(left["metrics"], right["metrics"])
 
-    def test_normal_case_does_not_invent_a_fault(self):
+    def test_normal_case_is_reported_as_healthy(self):
         record = next(r for r in self.dataset["records"] if r["scenario"] == "normal")
         result = run_diagnosis({"records": [record], "topology": self.dataset["topology"]})
-        self.assertEqual("insufficient_evidence", result["report"]["status"])
-        self.assertEqual([], result["report"]["supporting_evidence"])
+        self.assertEqual("healthy", result["report"]["status"])
+        self.assertEqual("No fault detected", result["report"]["suspected_root_cause"])
+        self.assertGreaterEqual(result["report"]["confidence"], .8)
 
     def test_link_congestion_produces_supported_report(self):
         record = next(r for r in self.dataset["records"] if r["scenario"] == "link_congestion")

@@ -9,6 +9,51 @@ def _range(values: list[float], unit: str = "") -> str:
     return f"{low:g}–{high:g}{unit}"
 
 
+def distinct_problem_count(report: dict) -> int:
+    """Count unique device and metric pairs in the report evidence."""
+    return len({(item.get("device_id"), item.get("metric"))
+                for item in report.get("supporting_evidence", [])
+                if item.get("metric") != "topology_scope"})
+
+
+def warning_summary(warnings: list[str]) -> str:
+    """Turn detailed parser warnings into a short operator-friendly line."""
+    duplicate_count = 0
+    ignored_count = 0
+    stale_hours = 0
+    for warning in warnings:
+        if "duplicate record" in warning.lower():
+            import re
+            match = re.search(r"(\d+) duplicate", warning)
+            duplicate_count += int(match.group(1)) if match else 0
+        elif any(token in warning.lower() for token in ("ignored", "is incompatible", "is not numeric")):
+            ignored_count += 1
+        if "stale" in warning.lower():
+            import re
+            match = re.search(r"\(([\d.]+) hours old\)", warning)
+            stale_hours = max(stale_hours, round(float(match.group(1)))) if match else stale_hours
+    parts = []
+    if duplicate_count:
+        parts.append(f"{duplicate_count} duplicate reading{'s' if duplicate_count != 1 else ''} ignored")
+    if ignored_count:
+        parts.append(f"{ignored_count} reading field{'s' if ignored_count != 1 else ''} ignored")
+    if stale_hours:
+        parts.append(f"data about {stale_hours} hours old")
+    return "; ".join(parts) or ("Some input details need review" if warnings else "No input issues found")
+
+
+def confidence_explanation(report: dict) -> str:
+    """Explain confidence without exposing the scoring formula."""
+    if report.get("status") == "healthy":
+        return "Several normal readings support this result."
+    penalties = report.get("confidence_breakdown", {}).get("penalties", {})
+    if any(penalties.get(key, 0) for key in ("stale_telemetry", "ignored_metrics", "unsupported_schema")):
+        return "Some readings were old, missing, or could not be used."
+    if report.get("confidence", 0) < .45:
+        return "The available readings do not strongly separate the possible causes."
+    return "Several useful readings point to this cause."
+
+
 def build_telemetry_view(records: list[dict], mode: str, devices: list[dict] | None = None) -> dict:
     """Return a compact device summary or the full per-reading metric table."""
     if mode == "Expert":

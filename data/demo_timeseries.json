@@ -1,6 +1,7 @@
 {
   "dataset_version": "1.1",
   "seed": 20261031,
+  "fixture": true,
   "topology": {
     "devices": [
       {
@@ -81,7 +82,7 @@
   },
   "records": [
     {
-      "timestamp": "2026-11-01T00:07:16.287284Z",
+      "timestamp": "2026-11-01T03:19:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -97,7 +98,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:11:16.287284Z",
+      "timestamp": "2026-11-01T03:23:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -113,7 +114,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:15:16.287284Z",
+      "timestamp": "2026-11-01T03:27:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -129,7 +130,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:19:16.287284Z",
+      "timestamp": "2026-11-01T03:31:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -145,7 +146,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:23:16.287284Z",
+      "timestamp": "2026-11-01T03:35:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -161,7 +162,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:27:16.287284Z",
+      "timestamp": "2026-11-01T03:39:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -177,7 +178,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:31:16.287284Z",
+      "timestamp": "2026-11-01T03:43:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -193,7 +194,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:35:16.287284Z",
+      "timestamp": "2026-11-01T03:47:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -209,7 +210,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:39:16.287284Z",
+      "timestamp": "2026-11-01T03:51:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -225,7 +226,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:43:16.287284Z",
+      "timestamp": "2026-11-01T03:55:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -241,7 +242,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:47:16.287284Z",
+      "timestamp": "2026-11-01T03:59:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -257,7 +258,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:51:16.287284Z",
+      "timestamp": "2026-11-01T04:03:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -273,7 +274,7 @@
       "scenario": "normal"
     },
     {
-      "timestamp": "2026-11-01T00:07:16.287284Z",
+      "timestamp": "2026-11-01T03:19:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -289,7 +290,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:11:16.287284Z",
+      "timestamp": "2026-11-01T03:23:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -305,7 +306,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:15:16.287284Z",
+      "timestamp": "2026-11-01T03:27:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -321,7 +322,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:19:16.287284Z",
+      "timestamp": "2026-11-01T03:31:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -337,7 +338,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:23:16.287284Z",
+      "timestamp": "2026-11-01T03:35:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -353,7 +354,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:27:16.287284Z",
+      "timestamp": "2026-11-01T03:39:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -369,7 +370,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:31:16.287284Z",
+      "timestamp": "2026-11-01T03:43:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -385,7 +386,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:35:16.287284Z",
+      "timestamp": "2026-11-01T03:47:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -401,7 +402,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:39:16.287284Z",
+      "timestamp": "2026-11-01T03:51:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -417,7 +418,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:43:16.287284Z",
+      "timestamp": "2026-11-01T03:55:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -433,7 +434,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:47:16.287284Z",
+      "timestamp": "2026-11-01T03:59:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -449,7 +450,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:51:16.287284Z",
+      "timestamp": "2026-11-01T04:03:17.098632Z",
       "device_id": "SW_CAMPUS_10",
       "device_type": "switch",
       "site": "Campus",
@@ -465,7 +466,7 @@
       "scenario": "latency_spike"
     },
     {
-      "timestamp": "2026-11-01T00:07:16.287284Z",
+      "timestamp": "2026-11-01T03:19:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -481,7 +482,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:11:16.287284Z",
+      "timestamp": "2026-11-01T03:23:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -497,7 +498,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:15:16.287284Z",
+      "timestamp": "2026-11-01T03:27:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -513,7 +514,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:19:16.287284Z",
+      "timestamp": "2026-11-01T03:31:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -529,7 +530,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:23:16.287284Z",
+      "timestamp": "2026-11-01T03:35:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -545,7 +546,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:27:16.287284Z",
+      "timestamp": "2026-11-01T03:39:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -561,7 +562,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:31:16.287284Z",
+      "timestamp": "2026-11-01T03:43:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -577,7 +578,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:35:16.287284Z",
+      "timestamp": "2026-11-01T03:47:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -593,7 +594,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:39:16.287284Z",
+      "timestamp": "2026-11-01T03:51:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -609,7 +610,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:43:16.287284Z",
+      "timestamp": "2026-11-01T03:55:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -625,7 +626,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:47:16.287284Z",
+      "timestamp": "2026-11-01T03:59:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -641,7 +642,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:51:16.287284Z",
+      "timestamp": "2026-11-01T04:03:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -657,7 +658,7 @@
       "scenario": "hardware_failure"
     },
     {
-      "timestamp": "2026-11-01T00:07:16.287284Z",
+      "timestamp": "2026-11-01T03:19:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -673,7 +674,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:11:16.287284Z",
+      "timestamp": "2026-11-01T03:23:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -689,7 +690,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:15:16.287284Z",
+      "timestamp": "2026-11-01T03:27:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -705,7 +706,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:19:16.287284Z",
+      "timestamp": "2026-11-01T03:31:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -721,7 +722,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:23:16.287284Z",
+      "timestamp": "2026-11-01T03:35:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -737,7 +738,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:27:16.287284Z",
+      "timestamp": "2026-11-01T03:39:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -753,7 +754,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:31:16.287284Z",
+      "timestamp": "2026-11-01T03:43:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -769,7 +770,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:35:16.287284Z",
+      "timestamp": "2026-11-01T03:47:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -785,7 +786,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:39:16.287284Z",
+      "timestamp": "2026-11-01T03:51:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -801,7 +802,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:43:16.287284Z",
+      "timestamp": "2026-11-01T03:55:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -817,7 +818,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:47:16.287284Z",
+      "timestamp": "2026-11-01T03:59:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -833,7 +834,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:51:16.287284Z",
+      "timestamp": "2026-11-01T04:03:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -849,7 +850,7 @@
       "scenario": "link_congestion"
     },
     {
-      "timestamp": "2026-11-01T00:07:16.287284Z",
+      "timestamp": "2026-11-01T03:19:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -867,7 +868,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:11:16.287284Z",
+      "timestamp": "2026-11-01T03:23:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -885,7 +886,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:15:16.287284Z",
+      "timestamp": "2026-11-01T03:27:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -903,7 +904,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:19:16.287284Z",
+      "timestamp": "2026-11-01T03:31:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -921,7 +922,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:23:16.287284Z",
+      "timestamp": "2026-11-01T03:35:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -939,7 +940,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:27:16.287284Z",
+      "timestamp": "2026-11-01T03:39:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -957,7 +958,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:31:16.287284Z",
+      "timestamp": "2026-11-01T03:43:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -975,7 +976,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:35:16.287284Z",
+      "timestamp": "2026-11-01T03:47:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -993,7 +994,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:39:16.287284Z",
+      "timestamp": "2026-11-01T03:51:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -1011,7 +1012,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:43:16.287284Z",
+      "timestamp": "2026-11-01T03:55:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -1029,7 +1030,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:47:16.287284Z",
+      "timestamp": "2026-11-01T03:59:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -1047,7 +1048,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:51:16.287284Z",
+      "timestamp": "2026-11-01T04:03:17.098632Z",
       "device_id": "HOSTEL_AP_07",
       "device_type": "access_point",
       "site": "Hostel Wi-Fi",
@@ -1065,7 +1066,7 @@
       "scenario": "weak_wifi"
     },
     {
-      "timestamp": "2026-11-01T00:07:16.287284Z",
+      "timestamp": "2026-11-01T03:19:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1082,7 +1083,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:11:16.287284Z",
+      "timestamp": "2026-11-01T03:23:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1099,7 +1100,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:15:16.287284Z",
+      "timestamp": "2026-11-01T03:27:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1116,7 +1117,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:19:16.287284Z",
+      "timestamp": "2026-11-01T03:31:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1133,7 +1134,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:23:16.287284Z",
+      "timestamp": "2026-11-01T03:35:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1150,7 +1151,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:27:16.287284Z",
+      "timestamp": "2026-11-01T03:39:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1167,7 +1168,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:31:16.287284Z",
+      "timestamp": "2026-11-01T03:43:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1184,7 +1185,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:35:16.287284Z",
+      "timestamp": "2026-11-01T03:47:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1201,7 +1202,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:39:16.287284Z",
+      "timestamp": "2026-11-01T03:51:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1218,7 +1219,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:43:16.287284Z",
+      "timestamp": "2026-11-01T03:55:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1235,7 +1236,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:47:16.287284Z",
+      "timestamp": "2026-11-01T03:59:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1252,7 +1253,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:51:16.287284Z",
+      "timestamp": "2026-11-01T04:03:17.098632Z",
       "device_id": "DEPT_EDGE_SW_02",
       "device_type": "switch",
       "site": "Engineering department",
@@ -1269,7 +1270,7 @@
       "scenario": "interface_fault"
     },
     {
-      "timestamp": "2026-11-01T00:07:16.287284Z",
+      "timestamp": "2026-11-01T03:19:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1283,7 +1284,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:11:16.287284Z",
+      "timestamp": "2026-11-01T03:23:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1297,7 +1298,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:15:16.287284Z",
+      "timestamp": "2026-11-01T03:27:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1311,7 +1312,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:19:16.287284Z",
+      "timestamp": "2026-11-01T03:31:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1325,7 +1326,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:23:16.287284Z",
+      "timestamp": "2026-11-01T03:35:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1339,7 +1340,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:27:16.287284Z",
+      "timestamp": "2026-11-01T03:39:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1353,7 +1354,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:31:16.287284Z",
+      "timestamp": "2026-11-01T03:43:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1367,7 +1368,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:35:16.287284Z",
+      "timestamp": "2026-11-01T03:47:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1381,7 +1382,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:39:16.287284Z",
+      "timestamp": "2026-11-01T03:51:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1395,7 +1396,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:43:16.287284Z",
+      "timestamp": "2026-11-01T03:55:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1409,7 +1410,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:47:16.287284Z",
+      "timestamp": "2026-11-01T03:59:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1423,7 +1424,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:51:16.287284Z",
+      "timestamp": "2026-11-01T04:03:17.098632Z",
       "device_id": "CAMPUS_DNS_01",
       "device_type": "service",
       "site": "Campus services",
@@ -1437,7 +1438,7 @@
       "scenario": "dns_dhcp_failure"
     },
     {
-      "timestamp": "2026-11-01T00:51:16.287284Z",
+      "timestamp": "2026-11-01T04:03:17.098632Z",
       "device_id": "HOSTEL_CORE_SW_01",
       "device_type": "switch",
       "site": "Hostel network",
@@ -1457,7 +1458,7 @@
       }
     },
     {
-      "timestamp": "2026-11-01T00:51:16.287284Z",
+      "timestamp": "2026-11-01T04:03:17.098632Z",
       "device_id": "BROKEN_NODE",
       "metrics": {
         "latency_ms": "fast",
