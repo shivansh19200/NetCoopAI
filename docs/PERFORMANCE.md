@@ -1,8 +1,5 @@
 # Diagnosis performance benchmark
 
-Run date: 2026-11-01 00:35 UTC
-Environment: Python 3.12.10, Windows-11-10.0.26200-SP0
-
 This measures one complete in-process `run_diagnosis()` call at several input sizes. It uses jittered synthetic link-congestion readings, one device, and the bundled topology. Each size is warmed up once; the table reports repeated-run median and 95th percentile latency. Peak memory is Python allocation traced by `tracemalloc`, not total process memory.
 
 These numbers describe this machine and software version. They are a repeatable baseline, not a service-level guarantee. The HTTP service and Streamlit rendering are not included.
