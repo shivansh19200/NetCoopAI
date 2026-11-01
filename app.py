@@ -375,10 +375,15 @@ st.session_state["current_scenario"] = scenario
 
 scenario_records = records_by_scenario.get(scenario, [])
 scenario_record = scenario_records[0] if scenario_records else {}
+topology = result["topology"] or demo["topology"]
+device_labels = {str(device.get("id")): str(device.get("label")) for device in topology.get("devices", []) if device.get("id")}
+def display_device(device_id):
+    return device_labels.get(str(device_id), str(device_id).replace("_", " ").title())
+
 affected_devices = list(dict.fromkeys(report.get("affected_devices", [])))
-observed_devices = ", ".join(affected_devices) or "Awaiting telemetry"
+observed_devices = ", ".join(display_device(device) for device in affected_devices) or "Awaiting readings"
 scenario_heading = "UPLOADED TELEMETRY" if uploaded is not None else SCENARIO_LABELS.get(scenario, scenario).upper()
-scenario_device = "UPLOADED DATA" if uploaded is not None else str(scenario_record.get("device_id", "SAMPLE RECORD"))
+scenario_device = "Uploaded readings" if uploaded is not None else display_device(scenario_record.get("device_id", "Sample device"))
 if uploaded is not None: st.info("Uploaded telemetry is active and overrides the selected demo scenario.", icon=":material/upload_file:")
 diagnosed = report["status"] == "diagnosed"
 ambiguous = report["status"] == "ambiguous"
@@ -394,6 +399,8 @@ visible_evidence = [item for item in report["supporting_evidence"] if item["metr
 metric_help = {"latency_ms":"Time for a packet to travel, in milliseconds.","jitter_ms":"How much packet travel time varies.","queue_drops":"Packets discarded while waiting in a device queue.","packet_loss_pct":"Share of packets that did not arrive.","link_utilization_pct":"Share of link capacity currently in use.","signal_strength_dbm":"Radio signal strength; values closer to zero are stronger.","interface_errors":"Errors counted by a wired network port."}
 def evidence_sentence(item):
     metric, value = item["metric"], item["value"]
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return f"Reported as {value}."
     if metric == "link_utilization_pct": return f"Link is {value:g}% full; normal is under 70%."
     if metric == "cpu_utilization_pct": return f"Device CPU is {value:g}% busy; investigate above 85%."
     if metric == "queue_drops": return f"Device dropped {value:g} packets from its queue; investigate above 50."
@@ -407,19 +414,23 @@ def evidence_sentence(item):
 def concise_evidence(item):
     metric = item["metric"]
     value = item["value"]
+    number = f"{value:g}" if isinstance(value, (int, float)) and not isinstance(value, bool) else str(value)
     short = {
-        "link_utilization_pct": f"{value:g}% used · alert above 70%",
-        "packet_loss_pct": f"{value:g}% lost · alert above 2%",
-        "latency_ms": f"{value:g} ms · alert above 100 ms",
-        "jitter_ms": f"{value:g} ms variation",
-        "queue_drops": f"{value:g} packets dropped · alert above 50",
-        "cpu_utilization_pct": f"{value:g}% busy · alert above 85%",
-        "signal_strength_dbm": f"{value:g} dBm · weak below -75 dBm",
-        "retransmissions_pct": f"{value:g}% resent",
-        "interface_errors": f"{value:g} port errors",
+        "link_utilization_pct": f"{number}% used · alert above 70%",
+        "packet_loss_pct": f"{number}% lost · alert above 2%",
+        "latency_ms": f"{number} ms · alert above 100 ms",
+        "jitter_ms": f"{number} ms variation",
+        "queue_drops": f"{number} packets dropped · alert above 50",
+        "cpu_utilization_pct": f"{number}% busy · alert above 85%",
+        "signal_strength_dbm": f"{number} dBm · weak below -75 dBm",
+        "retransmissions_pct": f"{number}% resent",
+        "interface_errors": f"{number} port errors",
     }
-    label = metric.replace("_pct", "").replace("_ms", "").replace("_dbm", "").replace("_", " ").title()
-    return label, short.get(metric, f"{value} {item.get('unit', '')}".strip())
+    labels = {"link_utilization_pct":"Link use", "packet_loss_pct":"Packets lost", "latency_ms":"Response time",
+              "jitter_ms":"Response variation", "queue_drops":"Queue drops", "cpu_utilization_pct":"CPU use",
+              "signal_strength_dbm":"Wi-Fi signal", "retransmissions_pct":"Wi-Fi retries", "interface_errors":"Port errors"}
+    label = labels.get(metric, metric.replace("_", " ").title())
+    return label, short.get(metric, f"{number} {item.get('unit', '')}".strip())
 evidence_html = "".join(
     f'<div class="diag-signal"><span>{escape(str(item["metric"]).replace("_", " "))}</span><b>{escape(evidence_sentence(item))}</b><small>{escape(str(item["device_id"]))}</small></div>'
     for item in visible_evidence
@@ -500,24 +511,25 @@ def metric_card(label, value, note, suffix=""):
 
 st.caption(f"{experience} view · " + ("plain-language findings" if experience == "Beginner" else "raw measurements, units, and diagnostic scoring"))
 cols = st.columns(6 if experience == "Expert" else 4)
-with cols[0]: metric_card("Root cause", report["suspected_root_cause"].replace(" ", "\u00a0"), report["status"].replace("_", " ").title())
+with cols[0]: metric_card("Likely problem", report["suspected_root_cause"].replace(" ", "\u00a0"), report["status"].replace("_", " ").title())
 penalty_total=sum(report["confidence_breakdown"].get("penalties",{}).values())+report["confidence_breakdown"].get("agent_failures",0)
 confidence_detail=f"Base {report['confidence_breakdown'].get('base',0):.0%} − penalties {penalty_total:.0%} · evidence coverage, not severity"
 with cols[1]: metric_card("Confidence", report["confidence"] * 100, confidence_detail, "%")
-with cols[2]: metric_card("Latency", max_metric("latency_ms"), "Highest device reading", " ms")
-with cols[3]: metric_card("Packet loss", max_metric("packet_loss_pct"), "Highest device reading", "%")
+with cols[2]: metric_card("Response time", max_metric("latency_ms"), "Slowest reading", " ms")
+with cols[3]: metric_card("Packets lost", max_metric("packet_loss_pct"), "Highest share lost", "%")
 if experience == "Expert":
     with cols[4]: metric_card("CPU", max_metric("cpu_utilization_pct"), "Highest device reading", "%")
     with cols[5]: metric_card("Agent handoffs", len(result["agent_messages"]), "Validated messages")
 
-trace_tab, json_tab = st.tabs(["Agent messages", "JSON report"])
+trace_tab, json_tab = st.tabs(["Team conversation", "JSON report"])
 with trace_tab:
     trace = result["agent_messages"]
-    st.caption("One entry per agent handoff. Repeated samples are summarized as readings, not separate devices.")
+    with st.popover("Help", help="Why are there several messages?"):
+        st.write("Each helper checks a different part of the network. Large counts are readings × metric types, not separate devices. The slider replays the conversation in order.")
     selected_trace = st.slider("Show messages through", 1, max(1, len(trace)), len(trace), key="trace_replay")
-    agent_names = {"performance_agent": "Performance specialist", "infrastructure_agent": "Infrastructure specialist",
-                   "connectivity_agent": "Connectivity specialist", "correlation_agent": "Correlator",
-                   "reporting_agent": "Report writer", "orchestrator": "Dashboard"}
+    agent_names = {"performance_agent": "Speed and Wi-Fi helper", "infrastructure_agent": "Device health helper",
+                   "connectivity_agent": "Network links helper", "correlation_agent": "Comparison",
+                   "reporting_agent": "Report", "orchestrator": "Dashboard"}
     message_names = {"finding": "Observation", "task_request": "Follow-up", "challenge": "Check", "ack": "Reply"}
     for index, message in enumerate(trace[:selected_trace], 1):
         source = agent_names.get(message["source_agent"], message["source_agent"])
@@ -527,6 +539,8 @@ with trace_tab:
         unique_evidence = {(item.get("device_id"), item.get("metric")) for item in message["evidence"]}
         devices = {device for device, _ in unique_evidence if device}
         metrics = {metric for _, metric in unique_evidence if metric}
+        for device in devices:
+            summary = summary.replace(device, display_device(device))
         if message["message_type"] == "finding" and message["source_agent"] in {"performance_agent", "infrastructure_agent"}:
             readings = len(message["evidence"]) // max(1, len(metrics))
             detail = f"Reviewed {readings} readings × {len(metrics)} metric types · {len(devices)} device(s)"
@@ -544,8 +558,11 @@ with trace_tab:
 with json_tab:
     st.json(report, expanded=True)
 
-st.markdown('<div class="section-title">Live network topology</div><div class="section-note">Animated packets follow the monitored paths. Highlight shows observed faults and downstream blast radius.</div>', unsafe_allow_html=True)
-topology=result["topology"] or demo["topology"]
+topology_title, topology_help = st.columns([10, 1])
+with topology_title: st.markdown('<div class="section-title">Network map</div>', unsafe_allow_html=True)
+with topology_help:
+    with st.popover("Help", help="What does this map show?"):
+        st.write("Boxes are network devices. Lines are connections. Orange marks the likely problem and devices that may be affected downstream.")
 highlighted=set(report["affected_devices"])|{e["device_id"] for e in report["supporting_evidence"]}
 if topology.get("devices"):
     st.image(render_topology(topology,highlighted),width="stretch",alt="Network topology highlighting fault evidence and downstream affected devices")
@@ -553,12 +570,28 @@ else: st.info("No usable topology was supplied. Add devices and links in the upl
 
 left, right = st.columns([1.65, 1], gap="large")
 with left:
-    st.markdown('<div class="section-title">Telemetry snapshot</div>', unsafe_allow_html=True)
-    view_data = build_telemetry_view(records, experience)
+    snapshot_title, snapshot_help = st.columns([10, 1])
+    with snapshot_title: st.markdown('<div class="section-title">Device readings</div>', unsafe_allow_html=True)
+    with snapshot_help:
+        with st.popover("Help", help="How should I read this table?"):
+            st.write("Each row is one device. Readings counts its time samples. The summary shows values that crossed an alert limit.")
+    view_data = build_telemetry_view(records, experience, topology.get("devices", []))
     help_columns = {name: st.column_config.NumberColumn(name, help=metric_help[name], format="%.1f") for name in metric_help if name in view_data["columns"]} if experience == "Expert" else {}
     st.dataframe(pd.DataFrame(view_data["rows"], columns=view_data["columns"]), width="stretch", hide_index=True, column_config=help_columns, alt="Telemetry readings for selected network devices")
-    st.markdown('<div class="section-title">Metric time windows</div><div class="section-note">Each dot is one reading; the blue line joins readings from older (left) to newer (right). Dashed red is the alert threshold. Values above it are high; Wi-Fi signal is weak below its line.</div>', unsafe_allow_html=True)
+    trend_title, trend_help = st.columns([10, 1])
+    with trend_title: st.markdown('<div class="section-title">Reading trends</div>', unsafe_allow_html=True)
+    with trend_help:
+        with st.popover("Help", help="What do these charts mean?"):
+            st.write("Each dot is one reading. The blue line runs from older readings on the left to newer ones on the right. The dashed red line is the alert limit. Values above it are high; Wi-Fi signal is weak below its line.")
     trend_specs = [("latency_ms",100),("packet_loss_pct",2),("link_utilization_pct",70),("cpu_utilization_pct",85),("signal_strength_dbm",-75)]
+    trend_labels = {"latency_ms":"Response time", "packet_loss_pct":"Packets lost", "link_utilization_pct":"Link use", "cpu_utilization_pct":"CPU use", "signal_strength_dbm":"Wi-Fi signal"}
+    trend_help_text = {
+        "latency_ms": "How long a packet takes to travel. Higher means slower responses.",
+        "packet_loss_pct": "The share of packets that did not arrive. Higher means more missing data.",
+        "link_utilization_pct": "How much of the connection's capacity is in use. Near 100% can slow traffic.",
+        "cpu_utilization_pct": "How busy the device's processor is.",
+        "signal_strength_dbm": "Wi-Fi strength. A number closer to zero means a stronger signal.",
+    }
     trend_cols=st.columns(2)
     for index,(metric,threshold) in enumerate(trend_specs):
         points=sorted([(str(r.get("timestamp") or f"sample {i+1}"),r["metrics"][metric]) for i,r in enumerate(records) if isinstance(r.get("metrics",{}).get(metric),(int,float))],key=lambda point:point[0])
@@ -572,14 +605,25 @@ with left:
             unit={"latency_ms":"ms","packet_loss_pct":"%","link_utilization_pct":"%","cpu_utilization_pct":"%","signal_strength_dbm":"dBm"}.get(metric,"")
             spark=f'<svg viewBox="0 0 {chart_w} {chart_h}" role="img" aria-label="{metric} readings over time with threshold {threshold} {unit}"><rect width="100%" height="100%" rx="8" fill="#0d0d10"/><line x1="8" y1="{threshold_y:.1f}" x2="{chart_w-8}" y2="{threshold_y:.1f}" stroke="#ff6a58" stroke-width="1.5" stroke-dasharray="5 4"/><path d="{path}" fill="none" stroke="#37d6ff" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>{dots}<text x="12" y="16" fill="#f4f4f4" font-size="11" font-family="monospace">Latest: {points[-1][1]:g} {unit}</text></svg>'
             count_label="1 reading · no trend yet" if len(points)==1 else f"{len(points)} readings · {points[0][1]:g} to {points[-1][1]:g} {unit}"
-            with trend_cols[index%2]: st.caption(f"{metric} · {count_label} · threshold {threshold} {unit}"); st.markdown(spark,unsafe_allow_html=True)
+            with trend_cols[index%2]:
+                chart_title, chart_help = st.columns([8, 1])
+                with chart_title: st.markdown(f"**{trend_labels[metric]}** · {count_label}")
+                with chart_help:
+                    with st.popover("Help", help=f"About {trend_labels[metric].lower()}"):
+                        st.write(trend_help_text[metric])
+                        st.caption(f"Dashed red line: alert limit at {threshold} {unit}.")
+                st.markdown(spark,unsafe_allow_html=True)
     for window in report.get("time_window_analysis",[]):
         for trend in window.get("trend_and_rate",[]): st.caption(f"{window['device_id']} · {trend['metric']} {trend['trend']} at {trend['rate_per_second']} {trend['unit_per_second']}")
         for interface,count in window.get("interface_flapping",{}).items(): st.warning(f"{window['device_id']} · interface {interface} changed state {count} times in the window.")
 
 with right:
     with st.container(border=True):
-        st.markdown('<div class="section-title">Diagnostic report</div><div class="section-note">Evidence-ranked recommendation for operator review</div>', unsafe_allow_html=True)
+        report_title, report_help = st.columns([8, 1])
+        with report_title: st.markdown('<div class="section-title">Diagnosis</div>', unsafe_allow_html=True)
+        with report_help:
+            with st.popover("Help", help="What does this result mean?"):
+                st.write("This is the most likely cause based on the readings. Check the evidence and suggested next step before acting.")
         if report["status"] == "diagnosed":
             st.success(report["suspected_root_cause"])
         else:
@@ -589,7 +633,7 @@ with right:
             st.markdown("**AI summary**")
             st.write(report["narrative"])
         if report["supporting_evidence"]:
-            st.markdown("**Supporting evidence**")
+            st.markdown("**Why this cause?**")
             evidence_groups = {}
             for evidence in report["supporting_evidence"][:5]:
                 evidence_groups.setdefault(evidence["device_id"], []).append(evidence)
@@ -620,37 +664,37 @@ with right:
                 for limitation in report["limitations"]:
                     st.write("• " + limitation)
 
-st.markdown('<div class="section-title">Agent findings</div><div class="section-note">Scenario label withheld · specialists analyze telemetry and topology · correlator compares their messages and ranks causes.</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">What the specialists noticed</div>', unsafe_allow_html=True)
 message_by_agent = {message["source_agent"]: message for message in result["agent_messages"]}
 specialists = [
-    ("performance_agent", "Performance", "Latency, jitter, loss, link use, Wi-Fi signal"),
-    ("infrastructure_agent", "Infrastructure", "CPU, memory, queues, interfaces, device health"),
-    ("connectivity_agent", "Connectivity", "Topology scope and network services"),
+    ("performance_agent", "Speed and Wi-Fi", "Response time, lost packets, link use, signal"),
+    ("infrastructure_agent", "Device health", "Processor, memory, queues, and ports"),
+    ("connectivity_agent", "Network links", "Connections and network services"),
 ]
 specialist_cols = st.columns(3)
 for col, (agent_id, label, role) in zip(specialist_cols, specialists):
     message = message_by_agent.get(agent_id, {})
     with col, st.container(border=True):
-        st.markdown(f"**{label} agent**")
-        st.caption(role)
+        card_title, card_help = st.columns([5, 1])
+        with card_title: st.markdown(f"**{label}**")
+        with card_help:
+            with st.popover("Help", help=f"What does {label.lower()} check?"):
+                st.write(role + ".")
         if message.get("evidence"):
             grouped = {}
             for evidence_item in message["evidence"]:
                 grouped.setdefault(evidence_item["device_id"], {})[evidence_item["metric"]] = evidence_item
             for device, metrics in grouped.items():
-                st.caption(device)
-                short_values = [f"{metric.replace('_pct', '').replace('_ms', '').replace('_', ' ')} {item['value']:g}{item['unit']}"
-                                for metric, item in metrics.items()]
+                st.caption(display_device(device))
+                short_values = []
+                for metric, item in metrics.items():
+                    label, _ = concise_evidence(item)
+                    value = item["value"]
+                    value_text = f"{value:g}" if isinstance(value, (int, float)) and not isinstance(value, bool) else str(value)
+                    short_values.append(f"{label} {value_text} {item['unit']}")
                 st.write(" · ".join(short_values[:4]))
         else:
             st.write("No elevated readings found.")
-correlator_message = message_by_agent.get("correlation_agent", {})
-top_candidate = report.get("ranked_candidates", [])
-correlation_summary = f"Compared {len(correlator_message.get('received_message_ids', []))} specialist messages"
-if top_candidate:
-    correlation_summary += f" · ranked {top_candidate[0]['cause']} first ({top_candidate[0]['score']:.0%})"
-st.info(correlation_summary + f" · report confidence {report['confidence']:.0%}", icon=":material/account_tree:")
-
 st.divider()
 with st.expander("Technical details", expanded=False):
     st.markdown("**What is being evaluated?**")

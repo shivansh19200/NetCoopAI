@@ -9,7 +9,7 @@ def _range(values: list[float], unit: str = "") -> str:
     return f"{low:g}–{high:g}{unit}"
 
 
-def build_telemetry_view(records: list[dict], mode: str) -> dict:
+def build_telemetry_view(records: list[dict], mode: str, devices: list[dict] | None = None) -> dict:
     """Return a compact device summary or the full per-reading metric table."""
     if mode == "Expert":
         metric_names = sorted({key for record in records for key in record.get("metrics", {})})
@@ -20,6 +20,7 @@ def build_telemetry_view(records: list[dict], mode: str) -> dict:
         ]
         return {"mode": "Expert", "columns": columns, "rows": rows}
 
+    labels = {str(device.get("id")): str(device.get("label")) for device in (devices or []) if device.get("id")}
     grouped: dict[str, list[dict]] = {}
     for record in records:
         grouped.setdefault(str(record.get("device_id", "Unknown device")), []).append(record)
@@ -44,8 +45,8 @@ def build_telemetry_view(records: list[dict], mode: str) -> dict:
                 observations.append(f"{label} {_range(values, unit)} ({threshold_note})")
         latest = max(samples, key=lambda row: str(row.get("timestamp", "")))
         rows.append({
-            "Device": device,
-            "Status": latest.get("status", "Unknown"),
+            "Device": labels.get(device, device.replace("_", " ").title()),
+            "Status": {"critical": "Needs attention", "warning": "Check readings", "healthy": "OK", "down": "Unreachable"}.get(str(latest.get("status", "Unknown")).lower(), latest.get("status", "Unknown")),
             "Readings": len(samples),
             "Key observations": "; ".join(observations[:4]) if observations else "No readings crossed alert thresholds",
         })

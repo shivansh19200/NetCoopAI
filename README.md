@@ -1,6 +1,6 @@
 # NetCoop AI
 
-NetCoop AI is a demo that checks network readings, asks specialist agents to compare them, and suggests what an operator should inspect. The built-in readings are synthetic; the app does not connect to or change a real network.
+NetCoop AI is a demo that checks network readings and suggests what to inspect. Small software helpers (called “agents”) compare different readings. The built-in readings are made up; the app does not connect to or change a real network.
 
 ## Start the dashboard
 
@@ -19,15 +19,15 @@ Choose a scenario or upload JSON/CSV telemetry. An upload takes priority over th
 
 ## Reading the dashboard
 
-- **Agent messages** shows the specialists' conversation. Use the slider to replay it. **JSON report** contains the full structured result.
-- **Topology** maps devices and links. Highlighted paths show the reported fault and downstream impact.
-- **Telemetry snapshot** gives one row per device. “Readings” is the number of time samples; the observations summarize values that crossed alert thresholds.
-- **Metric time windows** show readings from older (left) to newer (right). The blue line is the measured value; the red dashed line is its alert threshold. For Wi-Fi signal, values below the line are weak; for the other charts, values above it are high.
-- **Confidence** reflects evidence coverage and input quality. It is not a probability that the diagnosis is correct. High is 75% or more; Medium is 45–74%; Low is below 45%.
+- **Team conversation** shows how the helpers reached their result. Use the slider to replay the messages. **JSON report** contains the full result.
+- **Network map** shows devices as boxes and connections as lines. Orange highlights the likely problem and devices downstream that may be affected.
+- **Device readings** has one row per device. “Readings” counts its time samples; the summary combines unusual values across those samples. Repeated readings of the same device are expected.
+- **Reading trends** show each reading as a dot, from older (left) to newer (right). Blue joins the values; dashed red is the alert limit. For Wi-Fi signal, values below the line are weak. For the other charts, values above it are high. Use each chart's **Help** button for a plain-language description.
+- **Confidence** reflects how much useful evidence there is and its quality. It is not the chance that the result is right. High is 75% or more; Medium is 45–74%; Low is below 45%.
 
 ## How a diagnosis works
 
-The specialists report both unusual and normal readings. The correlator compares their evidence, may ask a follow-up question, and sends a ranked result to the report writer. Rules verify the result. The optional Groq feature can suggest hypotheses and write a summary, but it cannot change the rule-based verdict. It is off by default; when enabled, readings are sent to Groq.
+Each helper checks a different part of the network and reports normal readings too. The comparison step may ask a follow-up question, then ranks possible causes. Rules check the result. Optional Groq AI can suggest causes and write a summary, but cannot change the rule-based answer. It is off by default. When turned on, readings are sent to Groq.
 
 ```mermaid
 flowchart LR
@@ -49,7 +49,7 @@ flowchart LR
     Report -. optional summary .-> AI
 ```
 
-Agent messages use this sequence:
+The conversation follows this sequence:
 
 ```mermaid
 sequenceDiagram
@@ -77,7 +77,7 @@ sequenceDiagram
 
 ## Accuracy and speed
 
-The randomized audit generated 1,000 synthetic cases. It exactly matched the primary expected label in **792 cases (79.2%)** and had zero fuzz-input exceptions. Twenty percent of generated cases combine faults; the audit's strict single-label score may not credit a useful alternative or multi-fault result. These are synthetic results, not real-network accuracy. See the [confusion matrix and confidence breakdown](docs/ACCURACY.md).
+The audit tried 1,000 made-up cases and named the main problem correctly in **792 (79.2%)**. One in five cases combined two problems. It had no crashes on malformed inputs. These results describe only the generated examples; they are not real-network accuracy. See the [full results](docs/ACCURACY.md).
 
 The dashboard includes **86 synthetic readings**: 12 time points for each of seven scenarios, plus two input-quality examples. Each scenario follows one device over 44 minutes. This is a small demo dataset, not a representative network sample. See [how the sample data is made](docs/SYNTHETIC_DATA.md).
 
