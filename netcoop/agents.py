@@ -80,7 +80,7 @@ def normalize_records(payload: Any):
     else: return [],["Input must be a JSON object or array of device records."],{"devices":[],"links":[]}
     topology=_topology(topology,warnings)
     if not isinstance(records,list): records=[]; warnings.append("Records must be a list; invalid records were ignored.")
-    normalized=[]; seen=set(); ignored=0
+    normalized=[]; seen=set(); ignored=0; freshest_by_device={}
     for i,row in enumerate(records):
         if not isinstance(row,dict): warnings.append(f"Record {i+1} is not an object and was skipped."); continue
         metrics=row.get("metrics",{})
@@ -126,9 +126,19 @@ def normalize_records(payload: Any):
                 if parsed.tzinfo is None: parsed=parsed.replace(tzinfo=timezone.utc)
                 age=(datetime.now(timezone.utc)-parsed).total_seconds()
                 result["stale"]=age>3600
-                if age>3600: warnings.append(f"Record {i+1}: telemetry is stale ({age/3600:.1f} hours old); confidence is lower.")
+                current=freshest_by_device.get(result["device_id"])
+                if current is None or parsed>current[0]: freshest_by_device[result["device_id"]]=(parsed,age,i+1)
             except (ValueError,TypeError): warnings.append(f"Record {i+1}: timestamp is invalid; freshness could not be assessed.")
         else: result["stale"]=False
+    # Older samples in a trend are expected. Freshness is judged from the most
+    # recent reading for each device, while individual historical rows retain
+    # their own `stale` annotation for display/debugging.
+    stale_devices={device for device,(_,age,_) in freshest_by_device.items() if age>3600}
+    for device in stale_devices:
+        _,age,index=freshest_by_device[device]
+        warnings.append(f"Record {index}: latest telemetry for {device} is stale ({age/3600:.1f} hours old); confidence is lower.")
+    for row in normalized:
+        row["latest_telemetry_stale"]=row["device_id"] in stale_devices
     return normalized,warnings,topology
 
 def _evidence(row,metric,text):
@@ -307,7 +317,7 @@ def reporting_agent(correlation,records,warnings,messages,failures=None,topology
         "device_not_in_topology":.10 if topology and topology.get("devices") and any(r["device_id"] not in {str(d.get("id")) for d in topology.get("devices",[]) if isinstance(d,dict)} for r in records) else 0,
         "no_topology":.10 if not any("topology_scope"==e["metric"] for e in (winner["evidence"] if winner else [])) and any("No topology" in l for m in messages for l in m.get("limitations",[])) else 0,
         "ambiguous_fraction":.05 if any(x.get("confidence_penalty") for r in records for x in r.get("normalization",[])) else 0,
-        "stale_telemetry":.10 if any(r.get("stale") for r in records) else 0}
+        "stale_telemetry":.10 if any(r.get("latest_telemetry_stale") for r in records) else 0}
     # Independent evidence families are the message sources contributing to a candidate.
     strong_interface=bool(winner and winner["cause"]=="Ethernet/interface fault" and any(e["metric"]=="interface_errors" and e["value"]>=100 for e in winner["evidence"]))
     if winner and len(winner["families"])<2 and winner["distinct_signals"]<3 and not strong_interface: confidence=0

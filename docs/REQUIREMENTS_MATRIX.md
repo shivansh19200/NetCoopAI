@@ -9,6 +9,7 @@
 | Reports explain their conclusions | Reports include the likely cause, evidence, confidence score, alternatives, suggested checks, and limitations. |
 | Bad or unusual input is handled | The adapter converts known units and aliases, rejects booleans and infinite values, warns about missing metrics, checks stale readings, and flags devices that are down without readings. |
 | Results can be checked again | Automated tests and a seeded 1,000-case audit are included. See [`ACCURACY.md`](ACCURACY.md). |
+| Diagnosis speed can be measured | A repeatable benchmark measures median and P95 time plus traced Python memory from 1 to 1,000 records. See [`PERFORMANCE.md`](PERFORMANCE.md). |
 | The wider network impact is visible | The topology highlights affected devices and downstream scope. Metric trends and confidence deductions are shown in the dashboard. |
 | An AI model can help without owning the answer | Groq can suggest causes and write a summary when enabled; deterministic checks keep control of the verdict. |
 | The project can be run and reviewed | A command-line interface, GitHub Actions workflow, and recorded demo are included. |

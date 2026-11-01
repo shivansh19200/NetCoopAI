@@ -116,15 +116,33 @@ python -m pytest tests -q
 python scripts/accuracy_audit.py
 ```
 
-The audit uses seeded random scenarios with varied readings, overlapping problems, missing fields, and malformed values. It writes the confusion matrix and confidence results to `docs/ACCURACY.md`.
+The audit uses seeded random scenarios with varied readings, overlapping problems, missing fields, and malformed values. It writes the confusion matrix and confidence results to [`docs/ACCURACY.md`](docs/ACCURACY.md).
+
+### What the evaluation shows
+
+The audit generated **1,000 synthetic test cases**. Against each case's primary expected label, the diagnosis exactly matched in **792 cases (79.2%)**; it returned an alternative or abstained in the rest. The generator also combines faults in 20% of cases, so this strict single-label score does not credit every useful multi-fault answer. It had zero fuzz-input exceptions. The report includes a confusion matrix and confidence-score breakdown. These figures describe this generated test set only: they are not measured accuracy on a real network, and the runtime confidence score is not a verified probability.
+
+The dashboard fixture is larger now: **338 synthetic readings**, comprising 48 timestamped points for each of seven scenarios plus two input-quality examples. Each scenario shows one device over 188 minutes. This makes the charts more useful in a demo, but it is not a representative, multi-site network dataset. Stronger real-world claims need labeled telemetry collected across devices and sites, with a separate holdout set.
+
+### Diagnosis speed and memory
+
+The benchmark in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) measures full in-process diagnosis runs on this machine. A 48-reading scenario, the dashboard's diagnosis input size, took a median **63 ms** (P95 **65 ms**). A 338-record stress input took **2.72 s** median; 1,000 records took **8.07 s** median and **17.34 MiB** peak traced Python memory. The benchmark does not include HTTP calls or Streamlit rendering, and results depend on hardware and Python version. Re-run it with `python scripts/performance_benchmark.py` on the machine you want to measure.
 
 ## Data and input notes
 
-The bundled scenarios are examples generated locally from a fixed seed. They are not measurements from a real campus network. You can regenerate the demo fixture with:
+The nine one-record scenarios used by tests and the command-line examples can be regenerated with:
 
 ```bash
 python -m netcoop.data_generator --output data/sample_telemetry.json
 ```
+
+To rebuild the dashboard's chart-ready sample history, run:
+
+```bash
+python -m netcoop.data_generator --timeseries --output data/demo_timeseries.json
+```
+
+Both files are synthetic examples, not readings from a real campus network. The dashboard refreshes their timestamps when it loads them so they do not appear stale. Timestamps in uploaded files are checked normally.
 
 JSON may contain one record or a `records` list and an optional `topology`. CSV uses one row per device. Before diagnosis, the app converts known units and vendor field names and records each conversion. It rejects booleans and infinite or invalid numbers, warns when readings are missing, and lowers confidence for old readings or percentages that might have been entered as fractions.
 
@@ -139,6 +157,7 @@ JSON may contain one record or a `records` list and an optional `topology`. CSV 
 - `tests/` — automated checks.
 - `docs/AGENT_PROTOCOL.md` — message format and how agents work together.
 - `docs/ACCURACY.md` — results from the 1,000-case synthetic audit.
+- `docs/PERFORMANCE.md` — diagnosis speed and memory measurements.
 - `docs/SYNTHETIC_DATA.md` — where sample readings come from.
 - `docs/REQUIREMENTS_MATRIX.md` — a map from project goals to the implementation.
 

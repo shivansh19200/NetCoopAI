@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 SEED = 20261031
@@ -155,13 +155,68 @@ def build_demo_data(seed: int = SEED) -> dict:
     return {"dataset_version": "1.0", "seed": seed, "topology": topology, "records": records}
 
 
+def build_demo_timeseries(seed: int = SEED, samples_per_scenario: int = 48, interval_minutes: int = 4) -> dict:
+    """Build a labelled multi-hour time series for dashboard charts.
+
+    Seven usable scenarios have 48 jittered readings each by default. The two input-
+    quality demonstrations remain single records so their malformed values do
+    not swamp the timeline. This is synthetic history, not measured traffic.
+    """
+    if samples_per_scenario < 2 or interval_minutes < 1:
+        raise ValueError("Use at least two samples and a positive interval.")
+    base = build_demo_data(seed)
+    rng = random.Random(seed + 1)
+    series_names = [name for name in SCENARIOS if name not in {"interoperability_failure", "malformed_input"}]
+    latest = datetime.now(timezone.utc)
+    records = []
+    fixed_devices = {
+        "normal": "SW_CAMPUS_10", "latency_spike": "SW_CAMPUS_10",
+        "hardware_failure": "HOSTEL_CORE_SW_01",
+    }
+    fixed_sites = {"normal": "Campus", "latency_spike": "Campus", "hardware_failure": "Hostel network"}
+    for name in series_names:
+        template = next(row for row in base["records"] if row["scenario"] == name)
+        for index in range(samples_per_scenario):
+            row = generate_scenario(name, rng)
+            row.update({key: template[key] for key in ("device_id", "device_type", "site")})
+            row["device_id"] = fixed_devices.get(name, row["device_id"])
+            row["site"] = fixed_sites.get(name, row["site"])
+            metrics = row["metrics"]
+            if name == "link_congestion":
+                metrics.update(link_utilization_pct=round(rng.uniform(88, 99), 1), queue_drops=rng.randint(100, 300),
+                               latency_ms=round(rng.uniform(180, 360), 1), packet_loss_pct=round(rng.uniform(2.5, 5.5), 2),
+                               jitter_ms=round(rng.uniform(25, 60), 1))
+            elif name == "weak_wifi":
+                metrics.update(signal_strength_dbm=round(rng.uniform(-89, -76), 1), retransmissions_pct=round(rng.uniform(18, 40), 1),
+                               packet_loss_pct=round(rng.uniform(3, 12), 2), latency_ms=round(rng.uniform(130, 240), 1))
+            elif name == "interface_fault":
+                metrics.update(interface_errors=rng.randint(80, 220), packet_loss_pct=round(rng.uniform(2, 8), 2),
+                               latency_ms=round(rng.uniform(60, 130), 1))
+            elif name == "dns_dhcp_failure":
+                metrics.update(service_status=0, latency_ms=round(rng.uniform(3, 20), 1), packet_loss_pct=0.0)
+            timestamp = latest - timedelta(minutes=(samples_per_scenario - index - 1) * interval_minutes)
+            row["timestamp"] = timestamp.isoformat().replace("+00:00", "Z")
+            records.append(row)
+    # Keep deliberately malformed and incompatible examples separate from the
+    # trend histories; they are useful for input handling, not charting.
+    for name in ("interoperability_failure", "malformed_input"):
+        row = next(row for row in base["records"] if row["scenario"] == name)
+        row["timestamp"] = latest.isoformat().replace("+00:00", "Z")
+        records.append(row)
+    return {"dataset_version": "1.1", "seed": seed, "topology": base["topology"], "records": records,
+            "synthetic_history": {"samples_per_scenario": samples_per_scenario, "interval_minutes": interval_minutes,
+                                  "series_scenarios": series_names}}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default="data/sample_telemetry.json")
+    parser.add_argument("--timeseries", action="store_true", help="write chart-ready synthetic histories instead of one record per scenario")
     args = parser.parse_args()
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(build_demo_data(), indent=2), encoding="utf-8")
+    data = build_demo_timeseries() if args.timeseries else build_demo_data()
+    output.write_text(json.dumps(data, indent=2), encoding="utf-8")
     print(f"Wrote {output}")
 
 

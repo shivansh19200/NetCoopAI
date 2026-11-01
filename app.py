@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 
@@ -11,11 +12,11 @@ import streamlit as st
 
 from netcoop.agents import run_diagnosis
 from netcoop.dashboard_views import build_telemetry_view
-from netcoop.data_generator import SCENARIOS, build_demo_data
+from netcoop.data_generator import SCENARIOS, build_demo_timeseries
 from netcoop.workflow_store import WorkflowStore
 
 ROOT = Path(__file__).parent
-DATA_PATH = ROOT / "data" / "sample_telemetry.json"
+DATA_PATH = ROOT / "data" / "demo_timeseries.json"
 WORKFLOW_DB = ROOT / "state" / "netcoop_workflows.sqlite3"
 SCENARIO_LABELS = {
     "normal": "Normal operation", "latency_spike": "Latency spike",
@@ -133,10 +134,34 @@ div[data-testid="stButton"] button { border-radius:10px; }
 
 
 @st.cache_data(show_spinner=False)
-def load_demo():
+def read_demo_file():
     if DATA_PATH.exists():
         return json.loads(DATA_PATH.read_text(encoding="utf-8"))
-    return build_demo_data()
+    return build_demo_timeseries()
+
+
+def load_demo():
+    """Refresh synthetic sample timestamps so the demo is not marked stale."""
+    demo = read_demo_file()
+    parsed = []
+    for row in demo.get("records", []):
+        value = row.get("timestamp")
+        if value:
+            try:
+                parsed.append(datetime.fromisoformat(str(value).replace("Z", "+00:00")))
+            except ValueError:
+                pass
+    if parsed:
+        offset = datetime.now(timezone.utc) - max(parsed)
+        for row in demo.get("records", []):
+            value = row.get("timestamp")
+            if value:
+                try:
+                    shifted = datetime.fromisoformat(str(value).replace("Z", "+00:00")) + offset
+                    row["timestamp"] = shifted.isoformat().replace("+00:00", "Z")
+                except ValueError:
+                    continue
+    return demo
 
 
 @st.cache_data(show_spinner=False)
@@ -185,7 +210,9 @@ def clear_active_checkpoint():
 
 
 demo = load_demo()
-records_by_scenario = {row.get("scenario"): row for row in demo.get("records", [])}
+records_by_scenario = {}
+for row in demo.get("records", []):
+    records_by_scenario.setdefault(row.get("scenario"), []).append(row)
 workflow_store = get_workflow_store()
 saved_checkpoints = workflow_store.list_checkpoints()
 
@@ -219,8 +246,10 @@ with st.sidebar:
     uploaded = st.file_uploader("Upload JSON or CSV", type=["json", "csv"], help="JSON accepts a record or {records, topology}; CSV accepts one device per row.")
     st.markdown("---")
     st.markdown("**Dataset source**")
-    st.caption("`data/sample_telemetry.json` · seed `20261031` · Colab-derived synthetic readings")
+    history = demo.get("synthetic_history", {})
+    st.caption(f"`data/demo_timeseries.json` · {len(demo.get('records', []))} synthetic readings · {history.get('samples_per_scenario', 0)} points per scenario")
     st.markdown("**What-if controls**")
+    st.caption("The sliders replace these readings before diagnosis. Confidence reflects evidence coverage and data quality, so stronger values above the same threshold may leave it unchanged.")
     what_if_enabled=st.checkbox("Apply what-if values",value=False,key="what_if_enabled")
     what_util=st.slider("Link utilization (%)",0,100,60,key="what_if_util")
     what_drops=st.slider("Queue drops",0,500,20,key="what_if_drops")
@@ -253,9 +282,11 @@ if uploaded is not None:
     except Exception as exc:
         input_error = f"Could not read {uploaded.name}: {exc}"
 else:
-    selected = records_by_scenario.get(scenario)
-    analysis_record = {key: value for key, value in selected.items() if key != "scenario"} if selected else None
-    payload = {"records": [analysis_record] if analysis_record else [], "topology": demo["topology"]}
+    selected_rows = records_by_scenario.get(scenario, [])
+    analysis_records = [{**row, "metrics": dict(row.get("metrics", {}))} for row in selected_rows]
+    for row in analysis_records:
+        row.pop("scenario", None)
+    payload = {"records": analysis_records, "topology": demo["topology"]}
 
 if payload is not None and what_if_enabled:
     what_records=payload.get("records",[]) if isinstance(payload,dict) else payload
@@ -296,7 +327,8 @@ st.session_state["current_payload"] = payload
 st.session_state["current_result"] = result
 st.session_state["current_scenario"] = scenario
 
-scenario_record = records_by_scenario.get(scenario, {})
+scenario_records = records_by_scenario.get(scenario, [])
+scenario_record = scenario_records[0] if scenario_records else {}
 observed_devices = ", ".join(r["device_id"] for r in result["records"]) or "Awaiting telemetry"
 scenario_heading = "UPLOADED TELEMETRY" if uploaded is not None else SCENARIO_LABELS.get(scenario, scenario).upper()
 scenario_device = "UPLOADED DATA" if uploaded is not None else str(scenario_record.get("device_id", "SAMPLE RECORD"))
@@ -384,6 +416,8 @@ if result["warnings"]:
             friendly_warnings.append("A percentage looked like a 0-1 fraction, so we ignored it; confidence is lower.")
         elif "topology" in lower:
             friendly_warnings.append("Some topology details were missing or skipped, so affected network scope may be limited.")
+        elif "stale" in lower:
+            friendly_warnings.append("Some uploaded readings are over an hour old; confidence is lower.")
     for note in dict.fromkeys(friendly_warnings): st.info(note)
 records = result["records"]
 all_metrics = [r["metrics"] for r in records]
@@ -404,7 +438,7 @@ st.caption(f"{experience} view · " + ("plain-language findings" if experience =
 cols = st.columns(6 if experience == "Expert" else 4)
 with cols[0]: metric_card("Root cause", report["suspected_root_cause"].replace(" ", "\u00a0"), report["status"].replace("_", " ").title())
 penalty_total=sum(report["confidence_breakdown"].get("penalties",{}).values())+report["confidence_breakdown"].get("agent_failures",0)
-confidence_detail=f"Base {report['confidence_breakdown'].get('base',0):.0%} − penalties {penalty_total:.0%} · High ≥75%, Medium ≥45%"
+confidence_detail=f"Base {report['confidence_breakdown'].get('base',0):.0%} − penalties {penalty_total:.0%} · evidence coverage, not severity"
 with cols[1]: metric_card("Confidence", report["confidence"] * 100, confidence_detail, "%")
 with cols[2]: metric_card("Latency", max_metric("latency_ms"), "Highest device reading", " ms")
 with cols[3]: metric_card("Packet loss", max_metric("packet_loss_pct"), "Highest device reading", "%")
@@ -438,20 +472,22 @@ with left:
     view_data = build_telemetry_view(records, experience)
     help_columns = {name: st.column_config.NumberColumn(name, help=metric_help[name], format="%.1f") for name in metric_help if name in view_data["columns"]} if experience == "Expert" else {}
     st.dataframe(pd.DataFrame(view_data["rows"], columns=view_data["columns"]), width="stretch", hide_index=True, column_config=help_columns, alt="Telemetry readings for selected network devices")
-    st.markdown('<div class="section-title">Metric time windows</div><div class="section-note">Readings are ordered by timestamp; multiple samples are needed for meaningful trends.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Metric time windows</div><div class="section-note">Each line follows readings over time. The dashed line is the configured threshold; a single reading is shown as a point.</div>', unsafe_allow_html=True)
     trend_specs = [("latency_ms",100),("packet_loss_pct",2),("link_utilization_pct",70),("cpu_utilization_pct",85),("signal_strength_dbm",-75)]
     trend_cols=st.columns(2)
     for index,(metric,threshold) in enumerate(trend_specs):
-        points=[(r.get("timestamp") or f"sample {i+1}",r["metrics"][metric]) for i,r in enumerate(records) if metric in r.get("metrics",{})]
+        points=sorted([(str(r.get("timestamp") or f"sample {i+1}"),r["metrics"][metric]) for i,r in enumerate(records) if isinstance(r.get("metrics",{}).get(metric),(int,float))],key=lambda point:point[0])
         if points:
             low=min([v for _,v in points]+[threshold]); high=max([v for _,v in points]+[threshold]); span=max(high-low,1)
-            chart_h=64; chart_w=300; pad=5
-            coords=[(pad+i*(chart_w-2*pad)/max(1,len(points)-1),pad+(high-v)/span*(chart_h-2*pad)) for i,(_,v) in enumerate(points)]
-            path=" ".join(("M" if i==0 else "L")+f"{x:.1f},{y:.1f}" for i,(x,y) in enumerate(coords))
+            chart_h=82; chart_w=360; pad=12
+            coords=[((chart_w/2 if len(points)==1 else pad+i*(chart_w-2*pad)/(len(points)-1)),pad+(high-v)/span*(chart_h-2*pad)) for i,(_,v) in enumerate(points)]
+            path=" ".join(("M" if i==0 else "L")+f"{x:.1f},{y:.1f}" for i,(x,y) in enumerate(coords)) if len(coords)>1 else ""
             threshold_y=pad+(high-threshold)/span*(chart_h-2*pad)
-            dots="".join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" fill="#37d6ff"/>' for x,y in coords)
-            spark=f'<svg viewBox="0 0 {chart_w} {chart_h}" role="img" aria-label="{metric} trend with threshold {threshold}"><rect width="100%" height="100%" rx="8" fill="#0d0d10"/><line x1="0" y1="{threshold_y:.1f}" x2="{chart_w}" y2="{threshold_y:.1f}" stroke="#ff6a58" stroke-dasharray="5 4"/><path d="{path}" fill="none" stroke="#37d6ff" stroke-width="2.5"/>{dots}</svg>'
-            with trend_cols[index%2]: st.caption(f"{metric} · {len(points)} samples · threshold {threshold}"); st.markdown(spark,unsafe_allow_html=True)
+            dots="".join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{6 if len(points)==1 else 3.5}" fill="#37d6ff" stroke="#061319" stroke-width="2"/>' for x,y in coords)
+            unit={"latency_ms":"ms","packet_loss_pct":"%","link_utilization_pct":"%","cpu_utilization_pct":"%","signal_strength_dbm":"dBm"}.get(metric,"")
+            spark=f'<svg viewBox="0 0 {chart_w} {chart_h}" role="img" aria-label="{metric} readings over time with threshold {threshold} {unit}"><rect width="100%" height="100%" rx="8" fill="#0d0d10"/><line x1="8" y1="{threshold_y:.1f}" x2="{chart_w-8}" y2="{threshold_y:.1f}" stroke="#ff6a58" stroke-width="1.5" stroke-dasharray="5 4"/><path d="{path}" fill="none" stroke="#37d6ff" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>{dots}<text x="12" y="16" fill="#f4f4f4" font-size="11" font-family="monospace">Latest: {points[-1][1]:g} {unit}</text></svg>'
+            count_label="1 reading · no trend yet" if len(points)==1 else f"{len(points)} readings · {points[0][1]:g} to {points[-1][1]:g} {unit}"
+            with trend_cols[index%2]: st.caption(f"{metric} · {count_label} · threshold {threshold} {unit}"); st.markdown(spark,unsafe_allow_html=True)
     for window in report.get("time_window_analysis",[]):
         for trend in window.get("trend_and_rate",[]): st.caption(f"{window['device_id']} · {trend['metric']} {trend['trend']} at {trend['rate_per_second']} {trend['unit_per_second']}")
         for interface,count in window.get("interface_flapping",{}).items(): st.warning(f"{window['device_id']} · interface {interface} changed state {count} times in the window.")
