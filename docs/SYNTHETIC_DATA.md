@@ -5,9 +5,9 @@ The project includes made-up readings for exploring the dashboard. They are not 
 There are two fixtures for different jobs:
 
 - `data/sample_telemetry.json` has one record for each of nine scenarios. It is used by tests and command-line examples.
-- `data/demo_timeseries.json` has 338 records. Seven scenarios have 48 jittered readings each for one device, four minutes apart (a 188-minute timeline); malformed and compatibility examples each have one record. The dashboard uses this fixture so its graphs can show changes over time.
+- `data/demo_timeseries.json` has 86 records. Seven scenarios have 12 jittered readings each for one device, four minutes apart (a 44-minute timeline); malformed and compatibility examples each have one record. The dashboard uses this fixture so its graphs can show changes over time.
 
-These 338 rows are useful for the demo, not a representative network dataset. The separate 1,000-case audit generates new synthetic cases; it does not turn these rows into real or independent field measurements. See [`ACCURACY.md`](ACCURACY.md) for the audit and [`PERFORMANCE.md`](PERFORMANCE.md) for timing results.
+These 86 rows are useful for the demo, not a representative network dataset. The separate 1,000-case audit generates new synthetic cases; it does not turn these rows into real or independent field measurements. See [`ACCURACY.md`](ACCURACY.md) for the audit and [`PERFORMANCE.md`](PERFORMANCE.md) for timing results.
 
 The original Colab notebook produces one switch reading with a timestamp, device ID, metrics, and status. The local generator keeps its three baseline cases, then adds examples for the other project scenarios. It uses a fixed random seed (`20261031`), so regenerating the same version gives repeatable values. Generated timestamps are examples too.
 

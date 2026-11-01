@@ -155,10 +155,10 @@ def build_demo_data(seed: int = SEED) -> dict:
     return {"dataset_version": "1.0", "seed": seed, "topology": topology, "records": records}
 
 
-def build_demo_timeseries(seed: int = SEED, samples_per_scenario: int = 48, interval_minutes: int = 4) -> dict:
-    """Build a labelled multi-hour time series for dashboard charts.
+def build_demo_timeseries(seed: int = SEED, samples_per_scenario: int = 12, interval_minutes: int = 4) -> dict:
+    """Build a labelled short time series for dashboard charts.
 
-    Seven usable scenarios have 48 jittered readings each by default. The two input-
+    Seven usable scenarios have twelve jittered readings each by default. The two input-
     quality demonstrations remain single records so their malformed values do
     not swamp the timeline. This is synthetic history, not measured traffic.
     """
