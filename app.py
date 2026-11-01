@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 from netcoop.agents import run_diagnosis
-from netcoop.dashboard_views import build_telemetry_view, confidence_explanation, distinct_problem_count, warning_summary
+from netcoop.dashboard_views import build_telemetry_view, confidence_explanation, warning_summary
 from netcoop.workflow_store import WorkflowStore
 
 ROOT = Path(__file__).parent
@@ -514,12 +514,11 @@ def metric_card(label, value, note, suffix=""):
     st.markdown(f'<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value">{value_text}</div><div class="metric-note">{note}</div></div>', unsafe_allow_html=True)
 
 st.caption(f"{experience} view · " + ("plain-language findings" if experience == "Beginner" else "raw measurements, units, and diagnostic scoring"))
-problem_count = distinct_problem_count(report)
-data_quality = "Poor" if any("ignored" in item.lower() or "invalid" in item.lower() for item in result["warnings"]) else "Partial" if result["warnings"] else "Good"
-cols = st.columns(3)
-with cols[0]: metric_card("Problems found", problem_count, "Different readings outside safe limits")
-with cols[1]: metric_card("Devices affected", len(set(report.get("affected_devices", []))), "Including downstream devices")
-with cols[2]: metric_card("Data quality", data_quality, warning_summary(result["warnings"]))
+cols = st.columns(4)
+with cols[0]: metric_card("Response time", max_metric("latency_ms"), "Slowest device reading", " ms")
+with cols[1]: metric_card("Packets lost", max_metric("packet_loss_pct"), "Highest device reading", "%")
+with cols[2]: metric_card("CPU use", max_metric("cpu_utilization_pct"), "Busiest device", "%")
+with cols[3]: metric_card("Link use", max_metric("link_utilization_pct"), "Busiest connection", "%")
 
 incidents = report.get("incidents", [])
 if incidents:
