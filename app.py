@@ -48,9 +48,9 @@ def render_topology(topology: dict, highlighted: set[str]) -> str:
         try: utilization = float(link.get("utilization_pct", 0) or 0)
         except (TypeError, ValueError): utilization = 0.0
         high = utilization >= 70 or str(link.get("target")) in highlighted
-        color = "#8b72ff" if high else "url(#current-flow)"
+        color = "#ff623e" if high else "#08bff5"
         lines.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{2.5 if high else 1.5}"/>')
-        packets.append(f'<circle r="3.5" fill="{"#b49cff" if high else "#42a9f5"}"><animateMotion dur="{3.2 + i*.65}s" begin="-{i*.7}s" repeatCount="indefinite" path="{d}"/></circle>')
+        packets.append(f'<circle r="3.5" fill="{"#ff9a39" if high else "#08bff5"}"><animateMotion dur="{3.2 + i*.65}s" begin="-{i*.7}s" repeatCount="indefinite" path="{d}"/></circle>')
         midx, midy = (a[0]+b[0]+77)/2, (a[1]+b[1]+54)/2 - 10
         labels.append(f'<text x="{midx}" y="{midy}" class="load">{utilization:.0f}%</text>')
     cards = []
@@ -58,75 +58,76 @@ def render_topology(topology: dict, highlighted: set[str]) -> str:
         node_key = str(node.get("id", ""))
         x, y = coords.get(node_key, (0, 0))
         is_hot = node_key in highlighted
-        color = "#a58aff" if is_hot else "#42a9f5"
+        color = "#ff623e" if is_hot else "#08bff5"
         label = escape(str(node.get("label", node.get("id", "Node")))[:22])
         node_id = escape(str(node.get("id", ""))[:20])
-        cards.append(f'<g><rect x="{x}" y="{y}" width="154" height="54" rx="12" fill="#1a1624" stroke="{color}" stroke-width="{2 if is_hot else 1}"/><circle cx="{x+15}" cy="{y+18}" r="4" fill="{color}"/><text x="{x+27}" y="{y+22}" class="label">{label}</text><text x="{x+14}" y="{y+43}" class="id">{node_id}</text></g>')
+        cards.append(f'<g><rect x="{x}" y="{y}" width="154" height="54" rx="10" fill="#151517" stroke="{color}" stroke-width="{1.7 if is_hot else 1}"/><circle cx="{x+15}" cy="{y+18}" r="4" fill="{color}"/><text x="{x+27}" y="{y+22}" class="label">{label}</text><text x="{x+14}" y="{y+43}" class="id">{node_id}</text></g>')
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="470" viewBox="0 0 1000 470" role="img" aria-label="Network topology with animated packet flow">
     <title>Network topology</title>
     <defs>
-      <radialGradient id="topology-bg" cx="45%" cy="45%"><stop offset="0%" stop-color="#211a30"/><stop offset="75%" stop-color="#1b1728"/></radialGradient>
-      <linearGradient id="current-flow" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#077ac7"/><stop offset="100%" stop-color="#6b21ef"/></linearGradient>
-      <style>.label{{font:500 13px Arial,sans-serif;fill:#ffffff}}.id{{font:10px monospace;fill:#c5bec8}}.load{{font:12px monospace;fill:#d1cece}}</style>
+      <radialGradient id="topology-bg" cx="45%" cy="45%"><stop offset="0%" stop-color="#1b100d"/><stop offset="70%" stop-color="#080808"/></radialGradient>
+      <style>.label{{font:700 13px Arial,sans-serif;fill:#f4f4f4}}.id{{font:10px monospace;fill:#c2c2c7}}.load{{font:12px monospace;fill:#ddd}}</style>
     </defs>
-    <rect x="1" y="1" width="998" height="468" rx="16" fill="url(#topology-bg)" stroke="#3e3a46"/>
-    <circle cx="760" cy="28" r="5" fill="#42a9f5"/><text x="772" y="33" fill="#d1cece" font-family="monospace" font-size="12">PACKET FLOW</text>
-    <circle cx="890" cy="28" r="5" fill="#a58aff"/><text x="902" y="33" fill="#d1cece" font-family="monospace" font-size="12">AFFECTED</text>
+    <rect x="1" y="1" width="998" height="468" rx="14" fill="url(#topology-bg)" stroke="#29292c"/>
+    <circle cx="760" cy="28" r="5" fill="#08bff5"/><text x="772" y="33" fill="#ddd" font-family="monospace" font-size="12">PACKET FLOW</text>
+    <circle cx="890" cy="28" r="5" fill="#ff623e"/><text x="902" y="33" fill="#ddd" font-family="monospace" font-size="12">ELEVATED</text>
     {''.join(lines)}{''.join(labels)}{''.join(packets)}{''.join(cards)}</svg>'''
 
 
-st.set_page_config(page_title="NetCoop AI | Network diagnosis", page_icon="◈", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="NetCoop AI | Deterministic rule-based agents", page_icon="◈", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
 @font-face{font-family:Manrope;src:url('/app/static/fonts/Manrope.ttf') format('truetype');font-weight:200 800;font-style:normal;font-display:swap}
+@font-face{font-family:'Barlow Condensed';src:url('/app/static/fonts/BarlowCondensed-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
+@font-face{font-family:'Barlow Condensed';src:url('/app/static/fonts/BarlowCondensed-SemiBold.ttf') format('truetype');font-weight:600;font-display:swap}
+@font-face{font-family:'Barlow Condensed';src:url('/app/static/fonts/BarlowCondensed-Bold.ttf') format('truetype');font-weight:700;font-display:swap}
+@font-face{font-family:'Barlow Condensed';src:url('/app/static/fonts/BarlowCondensed-Black.ttf') format('truetype');font-weight:800 900;font-display:swap}
 @font-face{font-family:'DM Mono';src:url('/app/static/fonts/DMMono-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
-@font-face{font-family:'DM Mono';src:url('/app/static/fonts/DMMono-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
-html,body,[class*="css"]{font-family:'Manrope',sans-serif}
-.stApp{background:radial-gradient(ellipse at 80% 0%,#20162a 0%,#0e0918 42%,#0e0918 100%);color:#d1cece}
-.block-container{padding-top:1.4rem;padding-bottom:4rem;max-width:1200px}
-[data-testid="stHeader"]{background:#0e0918}
-[data-testid="stSidebar"]{background:#0e0918;border-right:1px solid #3e3a46;color:#d1cece}
-[data-testid="stSidebar"] h2,[data-testid="stSidebar"] h3{color:#fff!important;font-weight:500!important;letter-spacing:-.02em}
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,[data-testid="stSidebar"] label,[data-testid="stSidebar"] [data-testid="stCaptionContainer"]{color:#c5bec8!important}
-.brandbar{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #3e3a46;padding:14px 2px 18px;margin-bottom:30px}
-.brandmark{color:#fff;font-size:.85rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase}
-.brandmark span{color:#d1cece}
-.brandmeta{color:#9d9797;font:500 .68rem 'DM Mono',monospace;letter-spacing:.08em}
-.eyebrow{color:#9d9797;text-transform:uppercase;letter-spacing:.16em;font:500 .7rem 'DM Mono',monospace;text-align:center}
-.hero-title{color:#fff;font:300 clamp(3rem,6vw,4.5rem)/.98 'Manrope',sans-serif;letter-spacing:-.045em;text-align:center;margin:.45rem 0 .5rem;text-shadow:none}
-.hero-sub{color:#d1cece;font:400 clamp(1rem,2vw,1.2rem)/1.5 'Manrope',sans-serif;letter-spacing:.02em;text-align:center;text-transform:none;margin:.2rem 0 1.15rem}
-.hero-status{width:fit-content;margin:0 auto 1.1rem;padding:.5rem 1rem;border:1px solid #3e3a46;border-radius:999px;background:#1a1624;box-shadow:inset 0 0 0 1px #ffffff0a;color:#d1cece;font:500 .75rem 'Manrope',sans-serif;letter-spacing:.04em;text-align:center}
-.pill{display:inline-flex;gap:.45rem;align-items:center;padding:.38rem .72rem;background:#2c2834;border:1px solid #3e3a46;border-radius:8px;color:#d1cece;font:.7rem 'DM Mono',monospace}
-.dot{width:7px;height:7px;border-radius:50%;background:#7b55ef;box-shadow:0 0 10px #7b55ef88}
-.scoreboard{background:#1a1624;border:0;border-radius:16px;padding:24px 28px 22px;margin:1.8rem 0 1.3rem;box-shadow:inset 0 0 0 1px #ffffff1a,inset 0 -1px 0 #ff8e5d4d}
-.scorelabel{color:#d1cece;font-size:.8rem;font-weight:500}
-.scorevalue{font:400 2.5rem/1.05 'Manrope',sans-serif;letter-spacing:-.035em;margin:.35rem 0;color:#fff}
-.scoremeta{color:#b5abbc;font:.68rem 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.06em}
-.redtext{color:#ff776c!important}.bluetext{color:#56b8ff!important}
-.scoreline{height:4px;border-radius:8px;background:linear-gradient(141deg,#077ac7,#6b21ef);margin:1.1rem 0 .65rem;box-shadow:none}
-.source-note{text-align:center;color:#9d9797;font:.68rem 'DM Mono',monospace;letter-spacing:.03em;margin:.7rem 0 1.8rem}
-.metric-card{position:relative;background:#1a1624;border:0;border-radius:16px;padding:17px 18px 15px;min-height:105px;overflow:hidden;box-shadow:inset 0 0 0 1px #ffffff1a,inset 0 -1px 0 #ff8e5d4d}
-.metric-card:before{content:'';position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(141deg,#077ac7,#6b21ef)}
-.metric-label{color:#b5abbc;font:.68rem 'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase}
-.metric-value{color:#fff;font:400 1.65rem/1.15 'Manrope',sans-serif;letter-spacing:-.025em;margin-top:7px;overflow-wrap:anywhere}
-.metric-note{color:#b8b0bd;font-size:.72rem;margin-top:4px}
-.section-title{color:#fff;font:500 1.45rem/1.2 'Manrope',sans-serif;letter-spacing:-.025em;text-transform:none;text-shadow:none}
-.section-note{color:#b5abbc;font-size:.78rem;line-height:1.55}
-.agent-chip{background:#1b1728;border:0;border-radius:16px;padding:16px 14px;height:100%;box-shadow:inset 0 0 0 1px #ffffff1a,inset 0 -1px 0 #ff8e5d4d}
-.agent-chip strong{color:#fff;font-size:.82rem;font-weight:500}
-.agent-chip small{display:block;color:#b5abbc;margin-top:6px;font-size:.72rem}
-.mono{font-family:'DM Mono',monospace}
-div[data-testid="stExpander"]{border:1px solid #3e3a46;border-radius:12px;background:#1a1624}
-div[data-testid="stDataFrame"]{border:1px solid #3e3a46;border-radius:12px;overflow:hidden}
-div[data-testid="stDownloadButton"] button,[data-testid="stButton"] button[kind="primary"]{background:linear-gradient(30deg,rgb(253,137,37),rgb(255,12,0));color:#fff;border:0;font-weight:500;letter-spacing:.01em;border-radius:8px}
-[data-testid="stButton"] button{border-radius:8px;border-color:#68616f;background:#171322;color:#d1cece}
-[data-testid="stButton"] button:hover{border-color:#8b7ba2;color:#fff}
-[data-testid="stBaseButton-primary"]:hover{filter:brightness(1.08)}
-[data-testid="stTabs"] button{color:#b5abbc}
-[data-testid="stTabs"] button[aria-selected="true"]{color:#fff;border-bottom-color:#6b21ef}
-[data-testid="stTextInput"] input,[data-testid="stNumberInput"] input,[data-testid="stSelectbox"] [role="combobox"],[data-testid="stFileUploader"] section{background:#1a1624;color:#d1cece;border-color:#3e3a46;border-radius:8px}
-.stAlert{border-radius:12px;background:#1b1728}
+@font-face{font-family:'DM Mono';src:url('/app/static/fonts/DMMono-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
+html, body, [class*="css"] { font-family:'Manrope',sans-serif; }
+.stApp { background:radial-gradient(ellipse at 50% 3%,#241007 0%,#0b0908 29%,#050505 66%);color:#f4f4f4; }
+.block-container { padding-top:1rem;padding-bottom:3rem;max-width:1420px; }
+[data-testid="stHeader"] { background:#060606; }
+[data-testid="stSidebar"] { background:#0a0a0b;border-right:1px solid #242426; }
+[data-testid="stSidebar"] h2 { font-family:'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase; }
+.brandbar { display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #262323;padding:12px 2px 15px;margin-bottom:28px; }
+.brandmark { color:#f5f5f5;font-size:.85rem;font-weight:900;letter-spacing:.21em;text-transform:uppercase; }
+.brandmark span { color:#ff8a00; }
+.brandmeta { color:#777;font:500 .64rem 'DM Mono',monospace;letter-spacing:.12em; }
+.eyebrow { color:#ffc35c;text-transform:uppercase;letter-spacing:.24em;font:500 .68rem 'DM Mono',monospace;text-align:center; }
+.hero-title { color:#ff4928;background:linear-gradient(90deg,#ffb12e 0%,#ff5a21 42%,#f12218 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font:900 clamp(3.3rem,9vw,7.6rem)/.95 'Barlow Condensed',Impact,sans-serif;letter-spacing:.075em;text-align:center;text-shadow:0 0 34px #fa3e192e;margin:.2rem 0 .55rem; }
+.hero-sub { color:#eee;font:800 clamp(1.3rem,4vw,2.25rem)/1 'Manrope',sans-serif;letter-spacing:.22em;text-align:center;text-transform:uppercase;margin:.3rem 0 1.1rem; }
+.hero-status { width:fit-content;margin:0 auto 1.1rem;padding:.62rem 1.5rem;border:1px solid #782019;border-radius:999px;background:linear-gradient(90deg,#3a090a,#551008,#350908);box-shadow:0 0 30px #ff302444;color:#fff;font:800 .78rem 'Manrope',sans-serif;letter-spacing:.12em;text-align:center; }
+.pill { display:inline-flex;gap:.45rem;align-items:center;padding:.38rem .72rem;background:#161719;border:1px solid #36373a;border-radius:999px;color:#c3c3c5;font:.66rem 'DM Mono',monospace; }
+.dot { width:7px;height:7px;border-radius:50%;background:#ff3b47;box-shadow:0 0 12px #ff354e; }
+.scoreboard { background:linear-gradient(135deg,#101114,#0b0b0c);border:1px solid #252529;border-radius:20px;padding:22px 26px 20px;margin:1.8rem 0 1.3rem;box-shadow:0 18px 55px #0009; }
+.scorelabel { color:#bcbcc0;font-size:.78rem;font-weight:750; }
+.scorevalue { font:700 2.5rem/.95 'Barlow Condensed',sans-serif;letter-spacing:.02em;margin:.32rem 0;color:#fff; }
+.scoremeta { color:#85868a;font: .65rem 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em; }
+.redtext { color:#ff5d67!important; }.bluetext { color:#08bff5!important; }
+.scoreline { height:5px;border-radius:20px;background:linear-gradient(90deg,#ff384a 0 50%,#08baf3 50% 100%);margin:1.1rem 0 .65rem;box-shadow:0 0 15px #ff384a33; }
+.source-note { text-align:center;color:#777;font: .64rem 'DM Mono',monospace;letter-spacing:.05em;margin:.7rem 0 1.8rem; }
+.metric-card { position:relative;background:linear-gradient(155deg,#151517,#0b0b0c);border:1px solid #28282b;border-radius:13px;padding:15px 16px 13px;min-height:105px;overflow:hidden; }
+.metric-card:before { content:'';position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,#ff4738,#ff9e24); }
+.metric-label { color:#939399;font: .64rem 'DM Mono',monospace;letter-spacing:.13em;text-transform:uppercase; }
+.metric-value { color:#f9f9fa;font:700 1.55rem/1.12 'Barlow Condensed',sans-serif;letter-spacing:.015em;margin-top:6px;overflow-wrap:anywhere; }
+.metric-note { color:#77777c;font-size:.66rem;margin-top:3px; }
+.section-title { color:#06bafa;font:800 1.55rem 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;text-shadow:0 0 20px #00a7f555; }
+.section-note { color:#85858b;font-size:.73rem; }
+.agent-chip { background:linear-gradient(145deg,#171719,#0c0c0d);border:1px solid #2a2a2d;border-radius:11px;padding:14px 12px;height:100%;box-shadow:inset 0 1px #ffffff08; }
+.agent-chip strong { color:#f5f5f6;font-size:.76rem; }
+.agent-chip small { display:block;color:#89898e;margin-top:5px;font-size:.65rem; }
+.mono { font-family:'DM Mono',monospace; }
+div[data-testid="stExpander"] { border:1px solid #29292c;border-radius:11px;background:#101012; }
+div[data-testid="stDataFrame"] { border:1px solid #29292c;border-radius:11px;overflow:hidden; }
+div[data-testid="stDownloadButton"] button { background:linear-gradient(90deg,#ff8a00,#ff4331);color:#0a0807;border:0;font-weight:900;letter-spacing:.04em; }
+div[data-testid="stButton"] button { border-radius:10px; }
+.stAlert { border-radius:11px; }
+[data-testid="stSidebar"] { color:#f1f1f3; }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,[data-testid="stSidebar"] label,[data-testid="stSidebar"] [data-testid="stCaptionContainer"] { color:#c4c4ca!important; }
+.brandmeta,.source-note,.metric-note { color:#b5b5bb; }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -195,7 +196,7 @@ with st.sidebar:
         experience = st.segmented_control("Dashboard detail", ["Beginner", "Expert"], default="Beginner", key="dashboard_detail")
     else:
         experience = st.radio("Dashboard detail", ["Beginner", "Expert"], horizontal=True, key="dashboard_detail", help="Beginner summarizes readings in plain language. Expert shows raw metrics, units, and metric definitions.")
-    groq_enabled = st.checkbox("Get AI suggestions and summary", value=False, help="AI can suggest possible causes and write a summary. The evidence rules still decide the final result.")
+    groq_enabled = st.checkbox("Use Groq for hypotheses + narrative", value=False, help="Groq proposes evidence-linked causes and a report narrative; deterministic checks verify candidates and retain control of the verdict.")
     groq_api_key = os.environ.get("GROQ_API_KEY", "")
     if not groq_api_key:
         try:
@@ -204,27 +205,27 @@ with st.sidebar:
             groq_api_key = ""
     groq_review_clicked = False
     if groq_enabled:
-        st.caption("When you request a review, readings and findings are sent to Groq. Do not use sensitive telemetry.")
+        st.caption("When you run review, the rule report and agent findings are sent to Groq. Do not enable this for sensitive telemetry.")
         if not groq_api_key:
             st.warning("Set GROQ_API_KEY in the environment or Streamlit secrets to enable model review.")
-        groq_review_clicked = st.button("Get AI suggestions", disabled=not bool(groq_api_key), width="stretch")
-    st.caption(("Evidence rules + optional AI suggestions" if groq_enabled else "Evidence-based diagnosis") + " · sample readings")
+        groq_review_clicked = st.button("Review findings with Groq", disabled=not bool(groq_api_key), width="stretch")
+    st.caption(("Deterministic rule-based agents + Groq advisory" if groq_enabled else "Deterministic rule-based agents") + " · repeatable synthetic telemetry")
     if "scenario" not in st.session_state:
         st.session_state["scenario"] = "link_congestion"
     scenario = st.selectbox("Demo scenario", SCENARIOS, format_func=lambda value: SCENARIO_LABELS.get(value, value), key="scenario", on_change=clear_active_checkpoint)
-    run_clicked = st.button("▶  Run diagnosis", type="primary", width="stretch")
+    run_clicked = st.button("▶  Run deterministic diagnosis", type="primary", width="stretch")
     st.divider()
     st.markdown("**Bring your own telemetry**")
     uploaded = st.file_uploader("Upload JSON or CSV", type=["json", "csv"], help="JSON accepts a record or {records, topology}; CSV accepts one device per row.")
     st.markdown("---")
     st.markdown("**Dataset source**")
     st.caption("`data/sample_telemetry.json` · seed `20261031` · Colab-derived synthetic readings")
-    st.markdown("**Try different readings**")
+    st.markdown("**What-if controls**")
     what_if_enabled=st.checkbox("Apply what-if values",value=False,key="what_if_enabled")
     what_util=st.slider("Link utilization (%)",0,100,60,key="what_if_util")
     what_drops=st.slider("Queue drops",0,500,20,key="what_if_drops")
     what_rssi=st.slider("Signal strength (dBm)",-100,-30,-65,key="what_if_rssi")
-    if st.button("Test changed field names and units",key="corrupt_input",width="stretch"):
+    if st.button("Corrupt input: rename field + switch units",key="corrupt_input",width="stretch"):
         st.session_state["corrupt_input_enabled"]=not st.session_state.get("corrupt_input_enabled",False)
 
 if "last_scenario" not in st.session_state:
@@ -307,7 +308,7 @@ cause_label = report["suspected_root_cause"]
 confidence_label = f"{report['confidence']:.0%}"
 confidence_word = "High" if report["confidence"] >= .75 else "Medium" if report["confidence"] >= .45 else "Low"
 model_review_active = report.get("model_review", {}).get("status") == "reviewed"
-confidence_note = f"{confidence_word} · {'AI-assisted summary' if model_review_active else 'evidence rules'}"
+confidence_note = f"{confidence_word} · {'Groq-reviewed' if model_review_active else 'deterministic rule-based agents'}"
 confidence_color = "#54d38a" if confidence_word == "High" else "#ffc35c" if confidence_word == "Medium" else "#ff625e"
 source_label = "Uploaded telemetry" if uploaded is not None else "Synthetic demo fixture"
 visible_evidence = [item for item in report["supporting_evidence"] if item["metric"] != "topology_scope"][:3]
@@ -329,24 +330,43 @@ evidence_html = "".join(
 ) or '<div class="diag-empty">No measurements passed the evidence threshold. Collect another time-aligned sample before assigning a cause.</div>'
 next_step = report["recommended_actions"][0] if report["recommended_actions"] else "Collect more time-aligned telemetry."
 st.markdown(f'''<style>
-.diagnosis-panel{{background:#1b1728;border:0;border-radius:24px;padding:28px 30px 24px;margin:1rem 0 1.35rem;box-shadow:inset 0 0 0 1px #ffffff1a,inset 0 -1px 0 #ff8e5d4d}}
-.diag-top{{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #3e3a46;padding-bottom:16px}}
-.diag-kicker{{color:#b5abbc;font:500 .68rem 'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase}}
-.diag-status{{padding:6px 11px;border-radius:999px;background:#2c2834;border:1px solid #51465d;color:#e3d9f4;font:500 .68rem 'DM Mono',monospace;letter-spacing:.04em}}
-.diag-main{{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:20px;align-items:center;padding:24px 0 18px}}
-.diag-label{{color:#9d9797;font:500 .68rem 'DM Mono',monospace;letter-spacing:.1em;text-transform:uppercase}}
-.diag-cause{{color:#fff;font:400 clamp(1.7rem,3.4vw,2.7rem)/1.15 'Manrope',sans-serif;letter-spacing:-.035em;margin:7px 0 0;overflow-wrap:anywhere}}
-.diag-confidence{{text-align:right;border-left:1px solid #3e3a46;padding-left:18px}}
-.diag-confidence b{{display:block;color:{confidence_color};font:400 2.1rem/1 'Manrope',sans-serif;letter-spacing:-.04em}}
-.diag-confidence small{{display:block;color:#b5abbc;font:.65rem 'DM Mono',monospace;margin-top:7px;text-transform:uppercase;letter-spacing:.04em}}
-.diag-evidence{{display:flex;gap:12px;flex-wrap:wrap;margin:6px 0 20px}}
-.diag-signal{{min-width:150px;flex:1;background:#1a1624;border:0;border-radius:12px;padding:13px 14px;box-shadow:inset 0 0 0 1px #ffffff12}}
-.diag-signal span,.diag-signal small{{display:block;color:#b5abbc;font:.64rem 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.04em}}
-.diag-signal b{{display:block;color:#f4f0f5;font-size:.9rem;font-weight:500;margin:5px 0}}
-.diag-empty{{color:#c5bec8;font-size:.8rem;padding:8px 0}}
-.diag-bottom{{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-top:1px solid #3e3a46;padding-top:16px;color:#c5bec8;font-size:.75rem;line-height:1.6}}
-.diag-next{{color:#eee8f1;max-width:68%;margin-top:4px}}
+
+.diagnosis-panel{{background:linear-gradient(135deg,#141416,#0b0b0c);border:1px solid #303034;border-radius:18px;padding:24px 26px 20px;margin:1rem 0 1.35rem;box-shadow:0 18px 50px #0008}}
+
+.diag-top{{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #2b2b2e;padding-bottom:14px}}
+
+.diag-kicker{{color:#99999f;font:500 .66rem 'DM Mono',monospace;letter-spacing:.13em;text-transform:uppercase}}
+
+.diag-status{{padding:6px 10px;border-radius:999px;background:{'#21100d' if diagnosed else '#211c0d'};border:1px solid {'#75382a' if diagnosed else '#6c5525'};color:{'#ff8a65' if diagnosed else '#ffd477'};font:700 .64rem 'DM Mono',monospace;letter-spacing:.07em}}
+
+.diag-main{{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:20px;align-items:center;padding:20px 0 15px}}
+
+.diag-label{{color:#ff9a67;font:500 .66rem 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase}}
+
+.diag-cause{{color:#f5f5f6;font:800 clamp(1.55rem,3.4vw,2.6rem)/1.08 'Barlow Condensed',Impact,sans-serif;letter-spacing:.025em;margin:6px 0 0;overflow-wrap:anywhere}}
+
+.diag-confidence{{text-align:right;border-left:1px solid #303034;padding-left:18px}}
+
+.diag-confidence b{{display:block;color:{confidence_color};font:800 2rem/1 'Barlow Condensed',sans-serif}}
+
+.diag-confidence small{{display:block;color:#8b8b91;font: .62rem 'DM Mono',monospace;margin-top:5px;text-transform:uppercase;letter-spacing:.07em}}
+
+.diag-evidence{{display:flex;gap:9px;flex-wrap:wrap;margin:5px 0 16px}}
+
+.diag-signal{{min-width:125px;flex:1;background:#101013;border:1px solid #29292d;border-radius:10px;padding:9px 11px}}
+
+.diag-signal span,.diag-signal small{{display:block;color:#88888e;font: .61rem 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.06em}}
+
+.diag-signal b{{display:block;color:#ededf0;font-size:.9rem;margin:4px 0}}
+
+.diag-empty{{color:#aaa;font-size:.77rem;padding:8px 0}}
+
+.diag-bottom{{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-top:1px solid #2b2b2e;padding-top:13px;color:#999;font-size:.72rem}}
+
+.diag-next{{color:#e2e2e5;max-width:68%}}
+
 @media(max-width:650px){{.diagnosis-panel{{padding:17px}}.diag-main{{grid-template-columns:1fr;gap:12px}}.diag-confidence{{border-left:0;border-top:1px solid #303034;padding:12px 0 0;text-align:left;display:flex;align-items:baseline;gap:8px}}.diag-confidence b{{font-size:1.5rem}}.diag-bottom{{display:block}}.diag-next{{max-width:100%;margin-top:5px}}}}
+
 </style>
 <div class="diagnosis-panel">
   <div class="diag-top"><div class="diag-kicker">NETCOOP AI &nbsp; / &nbsp; INCIDENT BRIEF</div><div class="diag-status">● &nbsp; {status_label}</div></div>
@@ -392,7 +412,7 @@ if experience == "Expert":
     with cols[4]: metric_card("CPU", max_metric("cpu_utilization_pct"), "Highest device reading", "%")
     with cols[5]: metric_card("Agent handoffs", len(result["agent_messages"]), "Validated messages")
 
-trace_tab, json_tab = st.tabs(["Agent messages · replay", "JSON report"])
+trace_tab, json_tab = st.tabs(["Agent communication · replay", "JSON report"])
 with trace_tab:
     trace = result["agent_messages"]
     selected_trace = st.slider("Replay messages", 1, max(1, len(trace)), len(trace), key="trace_replay")
@@ -429,8 +449,8 @@ with left:
             coords=[(pad+i*(chart_w-2*pad)/max(1,len(points)-1),pad+(high-v)/span*(chart_h-2*pad)) for i,(_,v) in enumerate(points)]
             path=" ".join(("M" if i==0 else "L")+f"{x:.1f},{y:.1f}" for i,(x,y) in enumerate(coords))
             threshold_y=pad+(high-threshold)/span*(chart_h-2*pad)
-            dots="".join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" fill="#b49cff"/>' for x,y in coords)
-            spark=f'<svg viewBox="0 0 {chart_w} {chart_h}" role="img" aria-label="{metric} trend with threshold {threshold}"><rect width="100%" height="100%" rx="10" fill="#1a1624"/><line x1="0" y1="{threshold_y:.1f}" x2="{chart_w}" y2="{threshold_y:.1f}" stroke="#9d9797" stroke-dasharray="5 4"/><path d="{path}" fill="none" stroke="#7b55ef" stroke-width="2.5"/>{dots}</svg>'
+            dots="".join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" fill="#37d6ff"/>' for x,y in coords)
+            spark=f'<svg viewBox="0 0 {chart_w} {chart_h}" role="img" aria-label="{metric} trend with threshold {threshold}"><rect width="100%" height="100%" rx="8" fill="#0d0d10"/><line x1="0" y1="{threshold_y:.1f}" x2="{chart_w}" y2="{threshold_y:.1f}" stroke="#ff6a58" stroke-dasharray="5 4"/><path d="{path}" fill="none" stroke="#37d6ff" stroke-width="2.5"/>{dots}</svg>'
             with trend_cols[index%2]: st.caption(f"{metric} · {len(points)} samples · threshold {threshold}"); st.markdown(spark,unsafe_allow_html=True)
     for window in report.get("time_window_analysis",[]):
         for trend in window.get("trend_and_rate",[]): st.caption(f"{window['device_id']} · {trend['metric']} {trend['trend']} at {trend['rate_per_second']} {trend['unit_per_second']}")
@@ -444,7 +464,7 @@ with right:
         st.warning("Insufficient evidence for a reliable root-cause claim")
     st.markdown(f"**Incident**  <span class='mono'>{report['incident_id']}</span> &nbsp; · &nbsp; **Confidence** {report['confidence']:.0%}", unsafe_allow_html=True)
     if report.get("narrative"):
-        st.markdown("**AI-written summary · checked by evidence rules**")
+        st.markdown("**Generated report narrative · deterministic verdict**")
         st.write(report["narrative"])
     if report["supporting_evidence"]:
         st.markdown("**Supporting evidence**")
@@ -472,7 +492,7 @@ with right:
             for limitation in report["limitations"]:
                 st.write("• " + limitation)
 
-st.markdown('<div class="section-title">What each specialist found</div><div class="section-note">Specialists compare device readings and network connections, then share evidence for the final report.</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">Agent findings</div><div class="section-note">Scenario label withheld · specialists analyze telemetry and topology · correlator compares their messages and ranks causes.</div>', unsafe_allow_html=True)
 message_by_agent = {message["source_agent"]: message for message in result["agent_messages"]}
 specialists = [
     ("performance_agent", "Performance", "Latency, jitter, loss, link use, Wi-Fi signal"),
@@ -549,7 +569,7 @@ with st.expander("Technical details", expanded=False):
         st.dataframe(pd.DataFrame([{"Candidate": c["cause"], "Score": c["score"], "Signals": c["distinct_signals"]} for c in result["ranked_candidates"]]), width="stretch", hide_index=True, alt="Ranked possible causes and evidence scores")
 
     st.download_button("Download diagnostic report · JSON", data=json.dumps(report, indent=2), file_name=f"{report['incident_id'].lower()}_report.json", mime="application/json")
-    st.caption("NetCoop AI · " + ("evidence rules + AI suggestions" if model_review_active else "evidence rules") + " · sample readings.")
+    st.caption("NetCoop AI · " + ("deterministic agents + Groq advisory" if model_review_active else "deterministic rule-based agents") + " · synthetic telemetry.")
     st.markdown("**Schema warnings**")
     if result["warnings"]:
         for warning in result["warnings"]: st.warning(warning)

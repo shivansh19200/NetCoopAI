@@ -17,7 +17,7 @@ streamlit run app.py
 
 On macOS or Linux, activate the environment with `source .venv/bin/activate` instead. Open the local address printed by Streamlit.
 
-Choose a demo scenario in the sidebar, or upload a JSON or CSV file. An uploaded file takes priority over the selected scenario; the dashboard displays a banner when that happens. The sliders let you try different readings. The **Test changed field names and units** button changes the input so you can see how the app handles it.
+Choose a demo scenario in the sidebar, or upload a JSON or CSV file. An uploaded file takes priority over the selected scenario; the dashboard displays a banner when that happens. The what-if sliders let you try different readings. The **Corrupt input** button changes a field name and units so you can see how the app handles them.
 
 The **Agent communication · replay** tab lets you step through the messages. The **JSON report** tab shows the structured report. The topology highlights affected devices and downstream scope; the metric panels show readings and thresholds.
 
@@ -26,6 +26,56 @@ The **Agent communication · replay** tab lets you step through the messages. Th
 The rules compare device readings with configured thresholds. They can flag link congestion, weak Wi-Fi, interface faults, hardware problems, and DNS/DHCP service issues. Healthy readings are included in the agent conversation too, so a specialist can rule out a cause—for example, checking whether CPU use is normal.
 
 The confidence score is an evidence score, not a promise that the diagnosis is correct. “High”, “Medium”, and “Low” are display bands (75% and 45% cutoffs). The score breakdown shows its starting score and deductions. The [randomized audit](docs/ACCURACY.md) reports how the rules performed on 1,000 generated cases, including misses and ambiguous results. Those results describe this synthetic test set; they are not real-world network accuracy.
+
+## How a diagnosis moves through the app
+
+```mermaid
+flowchart LR
+    Person[Operator] --> UI[Dashboard]
+    UI --> Input[Convert known units and check readings]
+    Input --> Perf[Performance specialist]
+    Input --> Infra[Infrastructure specialist]
+    Input --> Connect[Connectivity specialist]
+    Perf --> Correlator[Compare evidence and rank causes]
+    Infra --> Correlator
+    Connect --> Correlator
+    Correlator --> Report[Build initial report]
+    Report --> FinalReport[Add optional AI summary]
+    FinalReport --> UI
+    UI --> Person
+    Perf -. optional cause ideas .-> AI[Groq AI]
+    Infra -. optional cause ideas .-> AI
+    Connect -. optional cause ideas .-> AI
+    AI -. checked against the readings .-> Correlator
+    Report -. optional summary request .-> AI
+    AI -. written summary .-> FinalReport
+```
+
+The agents send messages as they work. The replay tab shows them in order:
+
+```mermaid
+sequenceDiagram
+    participant UI as Dashboard
+    participant Input as Input checks
+    participant P as Performance agent
+    participant I as Infrastructure agent
+    participant C as Connectivity agent
+    participant R as Correlator
+    participant W as Report writer
+    UI->>Input: Readings and network map
+    Input->>P: Cleaned measurements
+    Input->>I: Cleaned measurements
+    Input->>C: Measurements and network links
+    P-->>R: Findings, including normal readings
+    I-->>R: Findings, including normal readings
+    C-->>R: Service and network scope
+    opt If another check can rule out a cause
+        R->>I: Is CPU use normal on this device?
+        I-->>R: Reply with the CPU reading
+    end
+    R->>W: Ranked causes and supporting evidence
+    W-->>UI: Report, confidence, alternatives, and next steps
+```
 
 ## Use the command line
 
