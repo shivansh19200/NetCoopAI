@@ -1,12 +1,10 @@
 # NetCoop AI
 
-NetCoop AI helps you explore possible network problems using sample or uploaded device readings. It shows the readings behind each suggestion, how the agents exchanged messages, and what an operator could check next.
-
-This is a demo and analysis aid. Its built-in data is synthetic. It does not connect to campus equipment or make network changes.
+NetCoop AI is a demo that checks network readings, asks specialist agents to compare them, and suggests what an operator should inspect. The built-in readings are synthetic; the app does not connect to or change a real network.
 
 ## Start the dashboard
 
-You need Python 3.11 or newer. From this folder, create and activate a virtual environment, then install the project requirements:
+You need Python 3.11 or newer.
 
 ```powershell
 python -m venv .venv
@@ -15,69 +13,77 @@ pip install -r requirements-dev.txt
 streamlit run app.py
 ```
 
-On macOS or Linux, activate the environment with `source .venv/bin/activate` instead. Open the local address printed by Streamlit.
+On macOS or Linux, activate the environment with `source .venv/bin/activate`.
 
-Choose a demo scenario in the sidebar, or upload a JSON or CSV file. An uploaded file takes priority over the selected scenario; the dashboard displays a banner when that happens. The what-if sliders let you try different readings. The **Corrupt input** button changes a field name and units so you can see how the app handles them.
+Choose a scenario or upload JSON/CSV telemetry. An upload takes priority over the selected scenario, and the dashboard shows a notice. Use the sliders to try different values; **Corrupt input** changes a field name and unit to demonstrate input handling.
 
-The **Agent communication · replay** tab lets you step through the messages. The **JSON report** tab shows the structured report. The topology highlights affected devices and downstream scope; the metric panels show readings and thresholds.
+## Reading the dashboard
 
-## What the results mean
+- **Agent messages** shows the specialists' conversation. Use the slider to replay it. **JSON report** contains the full structured result.
+- **Topology** maps devices and links. Highlighted paths show the reported fault and downstream impact.
+- **Telemetry snapshot** gives one row per device. “Readings” is the number of time samples; the observations summarize values that crossed alert thresholds.
+- **Metric time windows** show readings from older (left) to newer (right). The blue line is the measured value; the red dashed line is its alert threshold. For Wi-Fi signal, values below the line are weak; for the other charts, values above it are high.
+- **Confidence** reflects evidence coverage and input quality. It is not a probability that the diagnosis is correct. High is 75% or more; Medium is 45–74%; Low is below 45%.
 
-The rules compare device readings with configured thresholds. They can flag link congestion, weak Wi-Fi, interface faults, hardware problems, and DNS/DHCP service issues. Healthy readings are included in the agent conversation too, so a specialist can rule out a cause—for example, checking whether CPU use is normal.
+## How a diagnosis works
 
-The confidence score is an evidence score, not a promise that the diagnosis is correct. “High”, “Medium”, and “Low” are display bands (75% and 45% cutoffs). The score breakdown shows its starting score and deductions. The [randomized audit](docs/ACCURACY.md) reports how the rules performed on 1,000 generated cases, including misses and ambiguous results. Those results describe this synthetic test set; they are not real-world network accuracy.
-
-## How a diagnosis moves through the app
+The specialists report both unusual and normal readings. The correlator compares their evidence, may ask a follow-up question, and sends a ranked result to the report writer. Rules verify the result. The optional Groq feature can suggest hypotheses and write a summary, but it cannot change the rule-based verdict. It is off by default; when enabled, readings are sent to Groq.
 
 ```mermaid
 flowchart LR
     Person[Operator] --> UI[Dashboard]
-    UI --> Input[Convert known units and check readings]
+    UI --> Input[Convert units and check readings]
     Input --> Perf[Performance specialist]
     Input --> Infra[Infrastructure specialist]
     Input --> Connect[Connectivity specialist]
     Perf --> Correlator[Compare evidence and rank causes]
     Infra --> Correlator
     Connect --> Correlator
-    Correlator --> Report[Build initial report]
-    Report --> FinalReport[Add optional AI summary]
-    FinalReport --> UI
+    Correlator --> Report[Build report]
+    Report --> UI
     UI --> Person
-    Perf -. optional cause ideas .-> AI[Groq AI]
-    Infra -. optional cause ideas .-> AI
-    Connect -. optional cause ideas .-> AI
-    AI -. checked against the readings .-> Correlator
-    Report -. optional summary request .-> AI
-    AI -. written summary .-> FinalReport
+    Perf -. optional ideas .-> AI[Groq AI]
+    Infra -. optional ideas .-> AI
+    Connect -. optional ideas .-> AI
+    AI -. checked against readings .-> Correlator
+    Report -. optional summary .-> AI
 ```
 
-The agents send messages as they work. The replay tab shows them in order:
+Agent messages use this sequence:
 
 ```mermaid
 sequenceDiagram
     participant UI as Dashboard
     participant Input as Input checks
-    participant P as Performance agent
-    participant I as Infrastructure agent
-    participant C as Connectivity agent
+    participant P as Performance specialist
+    participant I as Infrastructure specialist
+    participant C as Connectivity specialist
     participant R as Correlator
     participant W as Report writer
     UI->>Input: Readings and network map
-    Input->>P: Cleaned measurements
-    Input->>I: Cleaned measurements
-    Input->>C: Measurements and network links
+    Input->>P: Checked readings
+    Input->>I: Checked readings
+    Input->>C: Readings and links
     P-->>R: Findings, including normal readings
     I-->>R: Findings, including normal readings
-    C-->>R: Service and network scope
-    opt If another check can rule out a cause
+    C-->>R: Network and service scope
+    opt A follow-up could rule out a cause
         R->>I: Is CPU use normal on this device?
         I-->>R: Reply with the CPU reading
     end
-    R->>W: Ranked causes and supporting evidence
-    W-->>UI: Report, confidence, alternatives, and next steps
+    R->>W: Ranked causes and evidence
+    W-->>UI: Report and next steps
 ```
 
-## Use the command line
+## Accuracy and speed
+
+The randomized audit generated 1,000 synthetic cases. It exactly matched the primary expected label in **792 cases (79.2%)** and had zero fuzz-input exceptions. Twenty percent of generated cases combine faults; the audit's strict single-label score may not credit a useful alternative or multi-fault result. These are synthetic results, not real-network accuracy. See the [confusion matrix and confidence breakdown](docs/ACCURACY.md).
+
+The dashboard includes **86 synthetic readings**: 12 time points for each of seven scenarios, plus two input-quality examples. Each scenario follows one device over 44 minutes. This is a small demo dataset, not a representative network sample. See [how the sample data is made](docs/SYNTHETIC_DATA.md).
+
+On the benchmark machine, diagnosis of 12 readings took **17.81 ms median** (18.12 ms P95). Larger stress inputs took 2.72 s for 338 records and 8.07 s for 1,000 records. Peak traced Python memory at 1,000 records was 17.34 MiB. These figures exclude HTTP calls and dashboard rendering and vary by machine. Full results and the rerun command are in [PERFORMANCE.md](docs/PERFORMANCE.md).
+
+## Command line and agent service
 
 Create a report without opening the dashboard:
 
@@ -86,79 +92,27 @@ python -m netcoop diagnose data/sample_telemetry.json --format md
 python -m netcoop diagnose data/sample_telemetry.json --format json
 ```
 
-## Run agents as a separate service
-
-The local HTTP service lets the dashboard or command line send requests to agents running as a separate service:
+Agents can also run as a separate HTTP service:
 
 ```bash
 python -m netcoop.http_agents
 ```
 
-In another terminal, set the service address before starting the app or CLI:
+Set `NETCOOP_AGENT_URL` to the service address before starting the dashboard to use it. The project also includes an MCP server: `mcp run mcp_server.py`.
 
-```powershell
-$env:NETCOOP_AGENT_URL = "http://127.0.0.1:8765"
-streamlit run app.py
-```
-
-The service has separate routes for the performance, infrastructure, connectivity, correlation, and reporting agents. An optional MCP (Model Context Protocol) server is available with `mcp run mcp_server.py`.
-
-## Optional AI writing and ideas
-
-The Groq option can suggest possible causes and write a short report summary. The regular rules check any suggested causes and keep control of the final verdict. No AI request is made unless you turn the option on. When enabled, device readings and evidence are sent to Groq; do not use sensitive telemetry unless that is allowed by your organization.
-
-Set `GROQ_API_KEY` in your environment or Streamlit secrets to enable it.
-
-## Run checks
+## Checks and project files
 
 ```bash
 python -m pytest tests -q
 python scripts/accuracy_audit.py
+python scripts/performance_benchmark.py
 ```
 
-The audit uses seeded random scenarios with varied readings, overlapping problems, missing fields, and malformed values. It writes the confusion matrix and confidence results to [`docs/ACCURACY.md`](docs/ACCURACY.md).
-
-### What the evaluation shows
-
-The audit generated **1,000 synthetic test cases**. Against each case's primary expected label, the diagnosis exactly matched in **792 cases (79.2%)**; it returned an alternative or abstained in the rest. The generator also combines faults in 20% of cases, so this strict single-label score does not credit every useful multi-fault answer. It had zero fuzz-input exceptions. The report includes a confusion matrix and confidence-score breakdown. These figures describe this generated test set only: they are not measured accuracy on a real network, and the runtime confidence score is not a verified probability.
-
-The bundled dashboard history has **86 synthetic readings**: 12 timestamped points for each of seven scenarios plus two input-quality examples. Each scenario shows one device over 44 minutes. This is a small demo fixture, not a representative, multi-site network dataset. Stronger real-world claims need labeled telemetry collected across devices and sites, with a separate holdout set.
-
-### Diagnosis speed and memory
-
-The benchmark in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) measures full in-process diagnosis runs on this machine. A 12-reading scenario, matching the dashboard's diagnosis input size, took a median **17.81 ms** (P95 **18.12 ms**). Larger benchmark inputs are stress tests, not part of the bundled dataset: 338 records took **2.72 s** median; 1,000 records took **8.07 s** median and **17.34 MiB** peak traced Python memory. The benchmark does not include HTTP calls or Streamlit rendering, and results depend on hardware and Python version. Re-run it with `python scripts/performance_benchmark.py` on the machine you want to measure.
-
-## Data and input notes
-
-The nine one-record scenarios used by tests and the command-line examples can be regenerated with:
-
-```bash
-python -m netcoop.data_generator --output data/sample_telemetry.json
-```
-
-To rebuild the dashboard's chart-ready sample history, run:
-
-```bash
-python -m netcoop.data_generator --timeseries --output data/demo_timeseries.json
-```
-
-Both files are synthetic examples, not readings from a real campus network. The dashboard refreshes their timestamps when it loads them so they do not appear stale. Timestamps in uploaded files are checked normally.
-
-JSON may contain one record or a `records` list and an optional `topology`. CSV uses one row per device. Before diagnosis, the app converts known units and vendor field names and records each conversion. It rejects booleans and infinite or invalid numbers, warns when readings are missing, and lowers confidence for old readings or percentages that might have been entered as fractions.
-
-## Project guide
-
-- `app.py` — dashboard.
-- `netcoop/agents.py` — input handling, agents, diagnosis, and report creation.
-- `netcoop/http_agents.py` — local HTTP service for agent requests.
-- `netcoop/model_agent.py` — optional Groq suggestions and report writing.
-- `netcoop/data_generator.py` — repeatable sample data and randomized cases.
-- `mcp_server.py` — optional MCP tools and resources.
+- `app.py` — Streamlit dashboard.
+- `netcoop/agents.py` — input checks, specialist agents, and diagnosis.
+- `netcoop/data_generator.py` — repeatable demo and audit data.
+- `mcp_server.py` — MCP tools and resources.
 - `tests/` — automated checks.
-- `docs/AGENT_PROTOCOL.md` — message format and how agents work together.
-- `docs/ACCURACY.md` — results from the 1,000-case synthetic audit.
-- `docs/PERFORMANCE.md` — diagnosis speed and memory measurements.
-- `docs/SYNTHETIC_DATA.md` — where sample readings come from.
-- `docs/REQUIREMENTS_MATRIX.md` — a map from project goals to the implementation.
+- `docs/` — protocol, accuracy, performance, and sample-data notes.
 
-A recorded dashboard walkthrough is included as [`demo.webm`](demo.webm).
+A recorded dashboard walkthrough is included as [demo.webm](demo.webm).

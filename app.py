@@ -90,45 +90,84 @@ st.markdown("""
 @font-face{font-family:'Barlow Condensed';src:url('/app/static/fonts/BarlowCondensed-Bold.ttf') format('truetype');font-weight:700;font-display:swap}
 @font-face{font-family:'Barlow Condensed';src:url('/app/static/fonts/BarlowCondensed-Black.ttf') format('truetype');font-weight:800 900;font-display:swap}
 @font-face{font-family:'DM Mono';src:url('/app/static/fonts/DMMono-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
-@font-face{font-family:'DM Mono';src:url('/app/static/fonts/DMMono-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
-html, body, [class*="css"] { font-family:'Manrope',sans-serif; }
-.stApp { background:radial-gradient(ellipse at 50% 3%,#241007 0%,#0b0908 29%,#050505 66%);color:#f4f4f4; }
-.block-container { padding-top:1rem;padding-bottom:3rem;max-width:1420px; }
-[data-testid="stHeader"] { background:#060606; }
-[data-testid="stSidebar"] { background:#0a0a0b;border-right:1px solid #242426; }
-[data-testid="stSidebar"] h2 { font-family:'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase; }
-.brandbar { display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #262323;padding:12px 2px 15px;margin-bottom:28px; }
-.brandmark { color:#f5f5f5;font-size:.85rem;font-weight:900;letter-spacing:.21em;text-transform:uppercase; }
-.brandmark span { color:#ff8a00; }
-.brandmeta { color:#777;font:500 .64rem 'DM Mono',monospace;letter-spacing:.12em; }
-.eyebrow { color:#ffc35c;text-transform:uppercase;letter-spacing:.24em;font:500 .68rem 'DM Mono',monospace;text-align:center; }
-.hero-title { color:#ff4928;background:linear-gradient(90deg,#ffb12e 0%,#ff5a21 42%,#f12218 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font:900 clamp(3.3rem,9vw,7.6rem)/.95 'Barlow Condensed',Impact,sans-serif;letter-spacing:.075em;text-align:center;text-shadow:0 0 34px #fa3e192e;margin:.2rem 0 .55rem; }
-.hero-sub { color:#eee;font:800 clamp(1.3rem,4vw,2.25rem)/1 'Manrope',sans-serif;letter-spacing:.22em;text-align:center;text-transform:uppercase;margin:.3rem 0 1.1rem; }
-.hero-status { width:fit-content;margin:0 auto 1.1rem;padding:.62rem 1.5rem;border:1px solid #782019;border-radius:999px;background:linear-gradient(90deg,#3a090a,#551008,#350908);box-shadow:0 0 30px #ff302444;color:#fff;font:800 .78rem 'Manrope',sans-serif;letter-spacing:.12em;text-align:center; }
-.pill { display:inline-flex;gap:.45rem;align-items:center;padding:.38rem .72rem;background:#161719;border:1px solid #36373a;border-radius:999px;color:#c3c3c5;font:.66rem 'DM Mono',monospace; }
-.dot { width:7px;height:7px;border-radius:50%;background:#ff3b47;box-shadow:0 0 12px #ff354e; }
-.scoreboard { background:linear-gradient(135deg,#101114,#0b0b0c);border:1px solid #252529;border-radius:20px;padding:22px 26px 20px;margin:1.8rem 0 1.3rem;box-shadow:0 18px 55px #0009; }
-.scorelabel { color:#bcbcc0;font-size:.78rem;font-weight:750; }
-.scorevalue { font:700 2.5rem/.95 'Barlow Condensed',sans-serif;letter-spacing:.02em;margin:.32rem 0;color:#fff; }
-.scoremeta { color:#85868a;font: .65rem 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em; }
-.redtext { color:#ff5d67!important; }.bluetext { color:#08bff5!important; }
-.scoreline { height:5px;border-radius:20px;background:linear-gradient(90deg,#ff384a 0 50%,#08baf3 50% 100%);margin:1.1rem 0 .65rem;box-shadow:0 0 15px #ff384a33; }
-.source-note { text-align:center;color:#777;font: .64rem 'DM Mono',monospace;letter-spacing:.05em;margin:.7rem 0 1.8rem; }
-.metric-card { position:relative;background:linear-gradient(155deg,#151517,#0b0b0c);border:1px solid #28282b;border-radius:13px;padding:15px 16px 13px;min-height:105px;overflow:hidden; }
-.metric-card:before { content:'';position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,#ff4738,#ff9e24); }
-.metric-label { color:#939399;font: .64rem 'DM Mono',monospace;letter-spacing:.13em;text-transform:uppercase; }
-.metric-value { color:#f9f9fa;font:700 1.55rem/1.12 'Barlow Condensed',sans-serif;letter-spacing:.015em;margin-top:6px;overflow-wrap:anywhere; }
-.metric-note { color:#77777c;font-size:.66rem;margin-top:3px; }
-.section-title { color:#06bafa;font:800 1.55rem 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;text-shadow:0 0 20px #00a7f555; }
-.section-note { color:#85858b;font-size:.73rem; }
-.agent-chip { background:linear-gradient(145deg,#171719,#0c0c0d);border:1px solid #2a2a2d;border-radius:11px;padding:14px 12px;height:100%;box-shadow:inset 0 1px #ffffff08; }
-.agent-chip strong { color:#f5f5f6;font-size:.76rem; }
-.agent-chip small { display:block;color:#89898e;margin-top:5px;font-size:.65rem; }
-.mono { font-family:'DM Mono',monospace; }
-div[data-testid="stExpander"] { border:1px solid #29292c;border-radius:11px;background:#101012; }
-div[data-testid="stDataFrame"] { border:1px solid #29292c;border-radius:11px;overflow:hidden; }
-div[data-testid="stDownloadButton"] button { background:linear-gradient(90deg,#ff8a00,#ff4331);color:#0a0807;border:0;font-weight:900;letter-spacing:.04em; }
-div[data-testid="stButton"] button { border-radius:10px; }
+@font-face{font-family:'DM Mono';src:url('/app/static/fonts/DMMono-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
+
+html, body, [class*="css"] { font-family:'Manrope',sans-serif; }
+
+.stApp { background:radial-gradient(ellipse at 50% 3%,#241007 0%,#0b0908 29%,#050505 66%);color:#f4f4f4; }
+
+.block-container { padding-top:1rem;padding-bottom:3rem;max-width:1420px; }
+
+[data-testid="stHeader"] { background:#060606; }
+
+[data-testid="stSidebar"] { background:#0a0a0b;border-right:1px solid #242426; }
+
+[data-testid="stSidebar"] h2 { font-family:'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase; }
+
+.brandbar { display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #262323;padding:12px 2px 15px;margin-bottom:28px; }
+
+.brandmark { color:#f5f5f5;font-size:.85rem;font-weight:900;letter-spacing:.21em;text-transform:uppercase; }
+
+.brandmark span { color:#ff8a00; }
+
+.brandmeta { color:#777;font:500 .64rem 'DM Mono',monospace;letter-spacing:.12em; }
+
+.eyebrow { color:#ffc35c;text-transform:uppercase;letter-spacing:.24em;font:500 .68rem 'DM Mono',monospace;text-align:center; }
+
+.hero-title { color:#ff4928;background:linear-gradient(90deg,#ffb12e 0%,#ff5a21 42%,#f12218 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font:900 clamp(3.3rem,9vw,7.6rem)/.95 'Barlow Condensed',Impact,sans-serif;letter-spacing:.075em;text-align:center;text-shadow:0 0 34px #fa3e192e;margin:.2rem 0 .55rem; }
+
+.hero-sub { color:#eee;font:800 clamp(1.3rem,4vw,2.25rem)/1 'Manrope',sans-serif;letter-spacing:.22em;text-align:center;text-transform:uppercase;margin:.3rem 0 1.1rem; }
+
+.hero-status { width:fit-content;margin:0 auto 1.1rem;padding:.62rem 1.5rem;border:1px solid #782019;border-radius:999px;background:linear-gradient(90deg,#3a090a,#551008,#350908);box-shadow:0 0 30px #ff302444;color:#fff;font:800 .78rem 'Manrope',sans-serif;letter-spacing:.12em;text-align:center; }
+
+.pill { display:inline-flex;gap:.45rem;align-items:center;padding:.38rem .72rem;background:#161719;border:1px solid #36373a;border-radius:999px;color:#c3c3c5;font:.66rem 'DM Mono',monospace; }
+
+.dot { width:7px;height:7px;border-radius:50%;background:#ff3b47;box-shadow:0 0 12px #ff354e; }
+
+.scoreboard { background:linear-gradient(135deg,#101114,#0b0b0c);border:1px solid #252529;border-radius:20px;padding:22px 26px 20px;margin:1.8rem 0 1.3rem;box-shadow:0 18px 55px #0009; }
+
+.scorelabel { color:#bcbcc0;font-size:.78rem;font-weight:750; }
+
+.scorevalue { font:700 2.5rem/.95 'Barlow Condensed',sans-serif;letter-spacing:.02em;margin:.32rem 0;color:#fff; }
+
+.scoremeta { color:#85868a;font: .65rem 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em; }
+
+.redtext { color:#ff5d67!important; }.bluetext { color:#08bff5!important; }
+
+.scoreline { height:5px;border-radius:20px;background:linear-gradient(90deg,#ff384a 0 50%,#08baf3 50% 100%);margin:1.1rem 0 .65rem;box-shadow:0 0 15px #ff384a33; }
+
+.source-note { text-align:center;color:#777;font: .64rem 'DM Mono',monospace;letter-spacing:.05em;margin:.7rem 0 1.8rem; }
+
+.metric-card { position:relative;background:linear-gradient(155deg,#151517,#0b0b0c);border:1px solid #28282b;border-radius:13px;padding:15px 16px 13px;min-height:105px;overflow:hidden; }
+
+.metric-card:before { content:'';position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,#ff4738,#ff9e24); }
+
+.metric-label { color:#939399;font: .64rem 'DM Mono',monospace;letter-spacing:.13em;text-transform:uppercase; }
+
+.metric-value { color:#f9f9fa;font:700 1.55rem/1.12 'Barlow Condensed',sans-serif;letter-spacing:.015em;margin-top:6px;overflow-wrap:anywhere; }
+
+.metric-note { color:#77777c;font-size:.66rem;margin-top:3px; }
+
+.section-title { color:#06bafa;font:800 1.55rem 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;text-shadow:0 0 20px #00a7f555; }
+
+.section-note { color:#85858b;font-size:.73rem; }
+
+.agent-chip { background:linear-gradient(145deg,#171719,#0c0c0d);border:1px solid #2a2a2d;border-radius:11px;padding:14px 12px;height:100%;box-shadow:inset 0 1px #ffffff08; }
+
+.agent-chip strong { color:#f5f5f6;font-size:.76rem; }
+
+.agent-chip small { display:block;color:#89898e;margin-top:5px;font-size:.65rem; }
+
+.mono { font-family:'DM Mono',monospace; }
+
+div[data-testid="stExpander"] { border:1px solid #29292c;border-radius:11px;background:#101012; }
+
+div[data-testid="stDataFrame"] { border:1px solid #29292c;border-radius:11px;overflow:hidden; }
+
+div[data-testid="stDownloadButton"] button { background:linear-gradient(90deg,#ff8a00,#ff4331);color:#0a0807;border:0;font-weight:900;letter-spacing:.04em; }
+
+div[data-testid="stButton"] button { border-radius:10px; }
+
 .stAlert { border-radius:11px; }
 [data-testid="stSidebar"] { color:#f1f1f3; }
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,[data-testid="stSidebar"] label,[data-testid="stSidebar"] [data-testid="stCaptionContainer"] { color:#c4c4ca!important; }
@@ -336,7 +375,8 @@ st.session_state["current_scenario"] = scenario
 
 scenario_records = records_by_scenario.get(scenario, [])
 scenario_record = scenario_records[0] if scenario_records else {}
-observed_devices = ", ".join(r["device_id"] for r in result["records"]) or "Awaiting telemetry"
+affected_devices = list(dict.fromkeys(report.get("affected_devices", [])))
+observed_devices = ", ".join(affected_devices) or "Awaiting telemetry"
 scenario_heading = "UPLOADED TELEMETRY" if uploaded is not None else SCENARIO_LABELS.get(scenario, scenario).upper()
 scenario_device = "UPLOADED DATA" if uploaded is not None else str(scenario_record.get("device_id", "SAMPLE RECORD"))
 if uploaded is not None: st.info("Uploaded telemetry is active and overrides the selected demo scenario.", icon=":material/upload_file:")
@@ -363,6 +403,23 @@ def evidence_sentence(item):
     if metric == "retransmissions_pct": return f"{value:g}% of Wi-Fi packets needed retransmission."
     if metric == "interface_errors": return f"Network port recorded {value:g} errors; investigate above 10."
     return item["interpretation"]
+
+def concise_evidence(item):
+    metric = item["metric"]
+    value = item["value"]
+    short = {
+        "link_utilization_pct": f"{value:g}% used · alert above 70%",
+        "packet_loss_pct": f"{value:g}% lost · alert above 2%",
+        "latency_ms": f"{value:g} ms · alert above 100 ms",
+        "jitter_ms": f"{value:g} ms variation",
+        "queue_drops": f"{value:g} packets dropped · alert above 50",
+        "cpu_utilization_pct": f"{value:g}% busy · alert above 85%",
+        "signal_strength_dbm": f"{value:g} dBm · weak below -75 dBm",
+        "retransmissions_pct": f"{value:g}% resent",
+        "interface_errors": f"{value:g} port errors",
+    }
+    label = metric.replace("_pct", "").replace("_ms", "").replace("_dbm", "").replace("_", " ").title()
+    return label, short.get(metric, f"{value} {item.get('unit', '')}".strip())
 evidence_html = "".join(
     f'<div class="diag-signal"><span>{escape(str(item["metric"]).replace("_", " "))}</span><b>{escape(evidence_sentence(item))}</b><small>{escape(str(item["device_id"]))}</small></div>'
     for item in visible_evidence
@@ -453,16 +510,37 @@ if experience == "Expert":
     with cols[4]: metric_card("CPU", max_metric("cpu_utilization_pct"), "Highest device reading", "%")
     with cols[5]: metric_card("Agent handoffs", len(result["agent_messages"]), "Validated messages")
 
-trace_tab, json_tab = st.tabs(["Agent communication · replay", "JSON report"])
+trace_tab, json_tab = st.tabs(["Agent messages", "JSON report"])
 with trace_tab:
     trace = result["agent_messages"]
-    selected_trace = st.slider("Replay messages", 1, max(1, len(trace)), len(trace), key="trace_replay")
-    for message in trace[:selected_trace]:
-        st.markdown(f"**{message['source_agent']} → {message['target_agent']}** · `{message['message_type']}` · {message['timestamp']}")
-        summary = message["findings"][0] if message["findings"] else "No finding text"
-        st.caption(f"{summary} · {len(message['evidence'])} evidence items · message {message['message_id'][:8]}")
+    st.caption("One entry per agent handoff. Repeated samples are summarized as readings, not separate devices.")
+    selected_trace = st.slider("Show messages through", 1, max(1, len(trace)), len(trace), key="trace_replay")
+    agent_names = {"performance_agent": "Performance specialist", "infrastructure_agent": "Infrastructure specialist",
+                   "connectivity_agent": "Connectivity specialist", "correlation_agent": "Correlator",
+                   "reporting_agent": "Report writer", "orchestrator": "Dashboard"}
+    message_names = {"finding": "Observation", "task_request": "Follow-up", "challenge": "Check", "ack": "Reply"}
+    for index, message in enumerate(trace[:selected_trace], 1):
+        source = agent_names.get(message["source_agent"], message["source_agent"])
+        target = agent_names.get(message["target_agent"], message["target_agent"])
+        st.markdown(f"**{index}. {source} → {target}** · {message_names.get(message['message_type'], 'Message')}")
+        summary = message["findings"][0] if message["findings"] else ""
+        unique_evidence = {(item.get("device_id"), item.get("metric")) for item in message["evidence"]}
+        devices = {device for device, _ in unique_evidence if device}
+        metrics = {metric for _, metric in unique_evidence if metric}
+        if message["message_type"] == "finding" and message["source_agent"] in {"performance_agent", "infrastructure_agent"}:
+            readings = len(message["evidence"]) // max(1, len(metrics))
+            detail = f"Reviewed {readings} readings × {len(metrics)} metric types · {len(devices)} device(s)"
+        elif message["source_agent"] == "connectivity_agent":
+            detail = f"Checked network scope · {len(devices)} device(s)"
+        elif message["source_agent"] == "correlation_agent" and summary.startswith("Ranked "):
+            detail = summary.replace("Ranked ", "Compared evidence and ranked ").replace(" candidate cause(s).", " possible causes.")
+        elif message["source_agent"] == "reporting_agent" and summary.startswith("Report verdict:"):
+            detail = f"Report ready · {message['evidence'][0].get('cause', report['suspected_root_cause']) if message['evidence'] else report['suspected_root_cause']} · {report['confidence']:.0%} confidence"
+        else:
+            detail = summary
+        st.caption(detail)
         if message.get("normalization"):
-            st.caption("Normalized: " + "; ".join(f"{n['field']} {n.get('from')} → {n.get('to')}" for n in message["normalization"]))
+            st.caption("Converted units or field names: " + "; ".join(f"{n['field']} → {n.get('to')}" for n in message["normalization"]))
 with json_tab:
     st.json(report, expanded=True)
 
@@ -479,7 +557,7 @@ with left:
     view_data = build_telemetry_view(records, experience)
     help_columns = {name: st.column_config.NumberColumn(name, help=metric_help[name], format="%.1f") for name in metric_help if name in view_data["columns"]} if experience == "Expert" else {}
     st.dataframe(pd.DataFrame(view_data["rows"], columns=view_data["columns"]), width="stretch", hide_index=True, column_config=help_columns, alt="Telemetry readings for selected network devices")
-    st.markdown('<div class="section-title">Metric time windows</div><div class="section-note">Each line follows readings over time. The dashed line is the configured threshold; a single reading is shown as a point.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Metric time windows</div><div class="section-note">Each dot is one reading; the blue line joins readings from older (left) to newer (right). Dashed red is the alert threshold. Values above it are high; Wi-Fi signal is weak below its line.</div>', unsafe_allow_html=True)
     trend_specs = [("latency_ms",100),("packet_loss_pct",2),("link_utilization_pct",70),("cpu_utilization_pct",85),("signal_strength_dbm",-75)]
     trend_cols=st.columns(2)
     for index,(metric,threshold) in enumerate(trend_specs):
@@ -500,40 +578,47 @@ with left:
         for interface,count in window.get("interface_flapping",{}).items(): st.warning(f"{window['device_id']} · interface {interface} changed state {count} times in the window.")
 
 with right:
-    st.markdown('<div class="section-title">Diagnostic report</div><div class="section-note">Evidence-ranked recommendation for operator review</div>', unsafe_allow_html=True)
-    if report["status"] == "diagnosed":
-        st.success(report["suspected_root_cause"])
-    else:
-        st.warning("Insufficient evidence for a reliable root-cause claim")
-    st.markdown(f"**Incident**  <span class='mono'>{report['incident_id']}</span> &nbsp; · &nbsp; **Confidence** {report['confidence']:.0%}", unsafe_allow_html=True)
-    if report.get("narrative"):
-        st.markdown("**Generated report narrative · deterministic verdict**")
-        st.write(report["narrative"])
-    if report["supporting_evidence"]:
-        st.markdown("**Supporting evidence**")
-        for evidence in report["supporting_evidence"][:5]:
-            st.markdown(f"- `{evidence['device_id']}` · **{evidence['metric']}** {evidence['value']} {evidence['unit']} — {evidence['interpretation']}")
-    else:
-        st.caption("No validated evidence crossed the reporting threshold.")
-    if report.get("model_review"):
-        st.markdown("**Groq reviewer · advisory only**")
-        st.info(report["model_review"]["summary"])
-        st.caption("It does not change the rule-based verdict or confidence.")
-        if report["model_review"]["alternative_explanations"]:
-            st.markdown("Possible alternatives: " + "; ".join(report["model_review"]["alternative_explanations"]))
-        if report["model_review"]["recommended_checks"]:
-            st.markdown("Suggested checks: " + "; ".join(report["model_review"]["recommended_checks"]))
-    st.markdown("**Recommended next steps**")
-    for action in report["recommended_actions"]:
-        st.markdown(f"- {action}")
-    if report["alternative_causes"]:
-        with st.expander("Other possible causes"):
-            for alternative in report["alternative_causes"]:
-                st.write("• " + alternative)
-    if report["limitations"]:
-        with st.expander("Limitations and input notes"):
-            for limitation in report["limitations"]:
-                st.write("• " + limitation)
+    with st.container(border=True):
+        st.markdown('<div class="section-title">Diagnostic report</div><div class="section-note">Evidence-ranked recommendation for operator review</div>', unsafe_allow_html=True)
+        if report["status"] == "diagnosed":
+            st.success(report["suspected_root_cause"])
+        else:
+            st.warning("Insufficient evidence for a reliable root-cause claim")
+        st.caption(f"Confidence: {report['confidence']:.0%}")
+        if report.get("narrative"):
+            st.markdown("**AI summary**")
+            st.write(report["narrative"])
+        if report["supporting_evidence"]:
+            st.markdown("**Supporting evidence**")
+            evidence_groups = {}
+            for evidence in report["supporting_evidence"][:5]:
+                evidence_groups.setdefault(evidence["device_id"], []).append(evidence)
+            for device, items in evidence_groups.items():
+                st.caption(device)
+                for evidence in items:
+                    label, detail = concise_evidence(evidence)
+                    st.markdown(f"- **{label}:** {detail}")
+        else:
+            st.caption("No validated evidence crossed the reporting threshold.")
+        if report.get("model_review"):
+            st.markdown("**Groq reviewer · advisory only**")
+            st.info(report["model_review"]["summary"])
+            st.caption("It does not change the rule-based verdict or confidence.")
+            if report["model_review"]["alternative_explanations"]:
+                st.markdown("Possible alternatives: " + "; ".join(report["model_review"]["alternative_explanations"]))
+            if report["model_review"]["recommended_checks"]:
+                st.markdown("Suggested checks: " + "; ".join(report["model_review"]["recommended_checks"]))
+        st.markdown("**Recommended next steps**")
+        for action in report["recommended_actions"][:2]:
+            st.markdown(f"- {action}")
+        if report["alternative_causes"]:
+            with st.expander("Other possible causes"):
+                for alternative in report["alternative_causes"]:
+                    st.write("• " + alternative)
+        if report["limitations"]:
+            with st.expander("Limitations and input notes"):
+                for limitation in report["limitations"]:
+                    st.write("• " + limitation)
 
 st.markdown('<div class="section-title">Agent findings</div><div class="section-note">Scenario label withheld · specialists analyze telemetry and topology · correlator compares their messages and ranks causes.</div>', unsafe_allow_html=True)
 message_by_agent = {message["source_agent"]: message for message in result["agent_messages"]}
@@ -549,10 +634,14 @@ for col, (agent_id, label, role) in zip(specialist_cols, specialists):
         st.markdown(f"**{label} agent**")
         st.caption(role)
         if message.get("evidence"):
-            for evidence_item in message["evidence"][:3]:
-                st.write(f"{evidence_item['device_id']} · {evidence_item['metric']} **{evidence_item['value']} {evidence_item['unit']}**")
-            if len(message["evidence"]) > 3:
-                st.caption(f"+ {len(message['evidence']) - 3} more findings")
+            grouped = {}
+            for evidence_item in message["evidence"]:
+                grouped.setdefault(evidence_item["device_id"], {})[evidence_item["metric"]] = evidence_item
+            for device, metrics in grouped.items():
+                st.caption(device)
+                short_values = [f"{metric.replace('_pct', '').replace('_ms', '').replace('_', ' ')} {item['value']:g}{item['unit']}"
+                                for metric, item in metrics.items()]
+                st.write(" · ".join(short_values[:4]))
         else:
             st.write("No elevated readings found.")
 correlator_message = message_by_agent.get("correlation_agent", {})

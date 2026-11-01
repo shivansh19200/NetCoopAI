@@ -2,8 +2,15 @@
 from __future__ import annotations
 
 
+def _range(values: list[float], unit: str = "") -> str:
+    low, high = min(values), max(values)
+    if low == high:
+        return f"{low:g}{unit}"
+    return f"{low:g}–{high:g}{unit}"
+
+
 def build_telemetry_view(records: list[dict], mode: str) -> dict:
-    """Return a plain-language snapshot or the full metric table for the dashboard."""
+    """Return a compact device summary or the full per-reading metric table."""
     if mode == "Expert":
         metric_names = sorted({key for record in records for key in record.get("metrics", {})})
         columns = ["Device", "Type", "Status", *metric_names]
@@ -13,36 +20,33 @@ def build_telemetry_view(records: list[dict], mode: str) -> dict:
         ]
         return {"mode": "Expert", "columns": columns, "rows": rows}
 
-    rows = []
+    grouped: dict[str, list[dict]] = {}
     for record in records:
-        metrics = record.get("metrics", {})
+        grouped.setdefault(str(record.get("device_id", "Unknown device")), []).append(record)
+
+    thresholds = [
+        ("link_utilization_pct", "Link use", "%", lambda value: value >= 70, "above 70%"),
+        ("packet_loss_pct", "Packet loss", "%", lambda value: value >= 2, "above 2%"),
+        ("latency_ms", "Latency", " ms", lambda value: value >= 100, "above 100 ms"),
+        ("cpu_utilization_pct", "CPU use", "%", lambda value: value > 85, "above 85%"),
+        ("queue_drops", "Queue drops", "", lambda value: value > 50, "above 50"),
+        ("signal_strength_dbm", "Wi-Fi signal", " dBm", lambda value: value <= -75, "weak at or below -75 dBm"),
+        ("retransmissions_pct", "Wi-Fi retries", "%", lambda value: value > 15, "above 15%"),
+        ("interface_errors", "Port errors", "", lambda value: value > 10, "above 10"),
+    ]
+    rows = []
+    for device, samples in grouped.items():
         observations = []
-        for name, value in metrics.items():
-            try:
-                value = float(value)
-            except (TypeError, ValueError):
-                continue
-            if name == "latency_ms" and value >= 100:
-                observations.append(f"Slow response ({value:g} ms)")
-            elif name == "jitter_ms" and value >= 30:
-                observations.append(f"Uneven response time ({value:g} ms jitter)")
-            elif name == "packet_loss_pct" and value >= 2:
-                observations.append(f"Some data is being lost ({value:g}%)")
-            elif name == "link_utilization_pct" and value >= 70:
-                observations.append(f"Link is {value:g}% full (normal is under 70%)")
-            elif name == "cpu_utilization_pct" and value > 85:
-                observations.append(f"Device processor is busy ({value:g}%)")
-            elif name == "queue_drops" and value > 50:
-                observations.append(f"Device dropped {value:g} packets waiting in a queue")
-            elif name == "signal_strength_dbm" and value <= -75:
-                observations.append(f"Wi-Fi signal is weak ({value:g} dBm)")
-            elif name == "retransmissions_pct" and value > 15:
-                observations.append(f"Wi-Fi had to resend {value:g}% of packets")
-            elif name == "interface_errors" and value > 10:
-                observations.append(f"Network port counted {value:g} errors")
+        for metric, label, unit, is_alert, threshold_note in thresholds:
+            values = [float(sample.get("metrics", {}).get(metric)) for sample in samples
+                      if isinstance(sample.get("metrics", {}).get(metric), (int, float))]
+            if values and any(is_alert(value) for value in values):
+                observations.append(f"{label} {_range(values, unit)} ({threshold_note})")
+        latest = max(samples, key=lambda row: str(row.get("timestamp", "")))
         rows.append({
-            "Device": record.get("device_id", "Unknown device"),
-            "Status": record.get("status", "Unknown"),
-            "Key observations": "; ".join(observations) if observations else "No key warning-level readings in the available measurements",
+            "Device": device,
+            "Status": latest.get("status", "Unknown"),
+            "Readings": len(samples),
+            "Key observations": "; ".join(observations[:4]) if observations else "No readings crossed alert thresholds",
         })
-    return {"mode": "Beginner", "columns": ["Device", "Status", "Key observations"], "rows": rows}
+    return {"mode": "Beginner", "columns": ["Device", "Status", "Readings", "Key observations"], "rows": rows}
