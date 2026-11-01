@@ -12,12 +12,17 @@ import streamlit as st
 
 from netcoop.agents import run_diagnosis
 from netcoop.dashboard_views import build_telemetry_view
-from netcoop.data_generator import SCENARIOS, build_demo_timeseries
 from netcoop.workflow_store import WorkflowStore
 
 ROOT = Path(__file__).parent
 DATA_PATH = ROOT / "data" / "demo_timeseries.json"
+SAMPLE_DATA_PATH = ROOT / "data" / "sample_telemetry.json"
 WORKFLOW_DB = ROOT / "state" / "netcoop_workflows.sqlite3"
+SCENARIOS = (
+    "normal", "latency_spike", "hardware_failure", "link_congestion",
+    "weak_wifi", "interface_fault", "dns_dhcp_failure",
+    "interoperability_failure", "malformed_input",
+)
 SCENARIO_LABELS = {
     "normal": "Normal operation", "latency_spike": "Latency spike",
     "hardware_failure": "Hardware failure", "link_congestion": "Link congestion",
@@ -137,7 +142,9 @@ div[data-testid="stButton"] button { border-radius:10px; }
 def read_demo_file():
     if DATA_PATH.exists():
         return json.loads(DATA_PATH.read_text(encoding="utf-8"))
-    return build_demo_timeseries()
+    if SAMPLE_DATA_PATH.exists():
+        return json.loads(SAMPLE_DATA_PATH.read_text(encoding="utf-8"))
+    raise FileNotFoundError("No bundled telemetry fixture found under data/.")
 
 
 def load_demo():
