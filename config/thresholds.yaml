@@ -1,0 +1,15 @@
+defaults:
+  latency_ms: 100
+  jitter_ms: 30
+  packet_loss_pct: 2
+  link_utilization_pct: 70
+  cpu_utilization_pct: 85
+  memory_utilization_pct: 90
+  queue_drops: 50
+device_types:
+  access_point:
+    cpu_utilization_pct: 90
+    link_utilization_pct: 80
+  router:
+    cpu_utilization_pct: 80
+    link_utilization_pct: 75

@@ -12,12 +12,13 @@
         "unit": {"type": "string"},
         "interpretation": {"type": "string"},
         "source_message_id": {"type": "string"}
+        ,"hypotheses": {"type":"array","items":{"type":"object","required":["cause","likelihood"],"properties":{"cause":{"type":"string"},"likelihood":{"type":"number","minimum":0,"maximum":1},"origin":{"enum":["model","rules"]}},"additionalProperties":false}}
       },
       "additionalProperties": true
     },
     "agent_message_v1": {
       "type": "object",
-      "required": ["schema_version", "message_id", "timestamp", "source_agent", "target_agent", "status", "findings", "evidence", "limitations"],
+      "required": ["schema_version", "message_id", "timestamp", "source_agent", "target_agent", "status", "message_type", "conversation_id", "in_reply_to", "capability_card", "normalization", "findings", "evidence", "limitations"],
       "properties": {
         "schema_version": {"const": "agent_message_v1"},
         "message_id": {"type": "string", "minLength": 1},
@@ -25,6 +26,9 @@
         "source_agent": {"type": "string", "minLength": 1},
         "target_agent": {"type": "string", "minLength": 1},
         "status": {"enum": ["ok", "warning", "error"]},
+        "message_type":{"enum":["finding","task_request","challenge","ack"]},
+        "conversation_id":{"type":"string"}, "in_reply_to":{"type":["string","null"]},
+        "capability_card":{"type":"object"}, "normalization":{"type":"array","items":{"type":"object"}},
         "findings": {"type": "array", "items": {"type": "string"}},
         "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
         "limitations": {"type": "array", "items": {"type": "string"}},

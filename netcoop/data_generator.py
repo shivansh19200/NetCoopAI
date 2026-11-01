@@ -98,6 +98,31 @@ def generate_scenario(name: str, rng: random.Random) -> dict:
     return record
 
 
+def generate_fuzz_case(rng: random.Random) -> tuple[dict, str]:
+    """Randomized accuracy/fuzz input: overlapping faults, jitter, and omissions."""
+    labels=["normal","Link congestion","Weak Wi-Fi","Hardware failure","Ethernet/interface fault","DNS/DHCP service failure"]
+    chosen=rng.choice(labels)
+    base={"cpu_utilization_pct":rng.uniform(15,55),"link_utilization_pct":rng.uniform(25,60),"packet_loss_pct":rng.uniform(0,.8),"latency_ms":rng.uniform(8,70),"jitter_ms":rng.uniform(1,15),"queue_drops":rng.randint(0,20)}
+    def add_fault(fault):
+        if fault=="Link congestion": base.update(link_utilization_pct=rng.uniform(76,100),queue_drops=rng.randint(60,900),latency_ms=rng.uniform(105,500),packet_loss_pct=rng.uniform(2.2,15))
+        elif fault=="Weak Wi-Fi": base.update(signal_strength_dbm=rng.uniform(-92,-76),retransmissions_pct=rng.uniform(17,60),packet_loss_pct=rng.uniform(2,15))
+        elif fault=="Hardware failure": base.update(cpu_utilization_pct=rng.uniform(88,100),interface_errors=rng.randint(20,600))
+        elif fault=="Ethernet/interface fault": base.update(interface_errors=rng.randint(30,800),packet_loss_pct=rng.uniform(2,10))
+        elif fault=="DNS/DHCP service failure": base.update(service_status=0)
+    if chosen=="DNS/DHCP service failure": base={"latency_ms":rng.uniform(3,50)}
+    if chosen!="normal": add_fault(chosen)
+    # Add a distinct second fault to 20% of cases. A nominal baseline with a
+    # superimposed fault is labeled by that fault, never as normal operation.
+    if rng.random()<.20:
+        second=rng.choice([label for label in labels if label not in {"normal",chosen}])
+        add_fault(second)
+        if chosen=="normal": chosen=second
+    if base and rng.random()<.08: base.pop(rng.choice(list(base)))
+    status="Healthy" if chosen=="normal" else "Warning"
+    if chosen=="Hardware failure": status="Critical"
+    return ({"device_id":f"FUZZ_{rng.randrange(20)}","device_type":"service" if chosen=="DNS/DHCP service failure" else rng.choice(["switch","router","access_point"]),"site":"fuzz segment","timestamp":datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),"status":status,"metrics":base},chosen)
+
+
 SCENARIOS = [
     "normal", "latency_spike", "hardware_failure", "link_congestion",
     "weak_wifi", "interface_fault", "dns_dhcp_failure",

@@ -10,6 +10,7 @@ from netcoop.agents import SCHEMA
 
 GROQ_MODEL = "openai/gpt-oss-20b"
 MODEL_REVIEW_SCHEMA = SCHEMA["$defs"]["model_review"]
+MODEL_HYPOTHESES_SCHEMA = {"type":"object","required":["hypotheses"],"properties":{"hypotheses":{"type":"array","items":{"type":"object","required":["device_id","metric","cause","likelihood"],"properties":{"device_id":{"type":"string"},"metric":{"type":"string"},"cause":{"enum":["Link congestion","Weak Wi-Fi","Hardware failure","Ethernet/interface fault","DNS/DHCP service failure","Latency spike"]},"likelihood":{"type":"number","minimum":0,"maximum":0.95}},"additionalProperties":False}}},"additionalProperties":False}
 
 
 def _review_context(report: dict, messages: list[dict]) -> dict:
@@ -80,3 +81,21 @@ def review_diagnosis(report: dict, messages: list[dict], api_key: str, model: st
     if review["status"] != "reviewed":
         raise ValueError("Groq did not return a completed review.")
     return review
+
+
+def generate_hypotheses(messages: list[dict], api_key: str, model: str = GROQ_MODEL, client: Any = None) -> list[dict]:
+    """Generate candidate hypotheses from agent evidence; rules verify them downstream."""
+    if client is None:
+        from groq import Groq
+        client=Groq(api_key=api_key,timeout=25.0,max_retries=0)
+    context=[{"agent":m.get("source_agent"),"evidence":[{k:e.get(k) for k in ("device_id","metric","value","unit","interpretation")} for e in m.get("evidence",[]) if not e.get("observation_only")]} for m in messages]
+    response=client.chat.completions.create(model=model,messages=[
+        {"role":"system","content":"Generate cause hypotheses only from supplied agent evidence. Return zero or more candidate cause, device, metric, and likelihood entries. Do not invent evidence. Deterministic rules will verify every proposal before it can affect diagnosis."},
+        {"role":"user","content":json.dumps(context,separators=(",",":"))}],
+        response_format={"type":"json_schema","json_schema":{"name":"netcoop_hypotheses","strict":True,"schema":MODEL_HYPOTHESES_SCHEMA}},temperature=.1,max_completion_tokens=500)
+    content=response.choices[0].message.content
+    if not content: raise ValueError("Groq returned empty hypothesis output")
+    result=json.loads(content)
+    errors=list(Draft202012Validator(MODEL_HYPOTHESES_SCHEMA).iter_errors(result))
+    if errors: raise ValueError(f"Groq hypothesis output failed schema validation: {errors[0].message}")
+    return result["hypotheses"]

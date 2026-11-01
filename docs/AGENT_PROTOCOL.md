@@ -1,40 +1,74 @@
-# Agent message protocol: `agent_message_v1`
+# How the agents communicate
 
-The default mode uses **deterministic rule-based agents**; a bounded Groq reviewer is optional. Every message is an `agent_message_v1` JSON object and is validated against [`schema.json`](schema.json) both when created and when received. A malformed message is rejected with a clear error; diagnosis continues with the remaining valid messages.
+NetCoop agents exchange JSON messages so the same specialists can run in the dashboard or as separate HTTP services. Each message has a unique ID and a real UTC timestamp. A conversation ID groups messages from one diagnosis; a reply can point to the message it answers.
 
-| Field | Type | Meaning |
-|---|---|---|
-| `schema_version` | string | Must be `agent_message_v1`. |
-| `message_id` | string | Stable identifier used to correlate a run's handoffs. |
-| `timestamp` | ISO 8601 UTC string | Message creation time. |
-| `source_agent` | string | Sending specialist. |
-| `target_agent` | string | Intended recipient. Specialist messages target `correlation_agent`; its result targets `reporting_agent`. |
-| `status` | `ok`, `warning`, or `error` | Processing result. |
-| `findings` | array of strings | Concise interpretations, not raw telemetry. |
-| `evidence` | array of objects | `{device_id, metric, value, unit, interpretation}`; report evidence cites `source_message_id`. |
-| `received_message_ids` | array of strings | IDs of upstream messages consumed by a directed handoff. |
-| `limitations` | array of strings | Missing or incompatible input that constrains interpretation. |
+Messages use one of four types:
 
-Canonical fields and units: `latency_ms` (ms), `jitter_ms` (ms), `packet_loss_pct` (%), `throughput_mbps` (Mbps), `bandwidth_mbps` (Mbps), `link_utilization_pct` (%), `cpu_utilization_pct` (%), `memory_utilization_pct` (%), `queue_drops` (count), `interface_errors` (count), `signal_strength_dbm` (dBm), `retransmissions_pct` (%), `service_status` (categorical), `device_status` (categorical).
+- `finding` — an agent shares what it observed.
+- `task_request` — an agent asks another specialist to check something.
+- `challenge` — the correlator asks for more evidence or flags uncertainty.
+- `ack` — an agent confirms it handled a request.
 
-## Responsibilities and handoffs
+Each specialist sends a capability card that lists the measurements it understands. It also sends normal observations, not only unusual ones. Normal observations help the correlator rule out possible causes.
 
-1. `performance_agent` evaluates latency, jitter, loss, throughput, utilization, and Wi-Fi quality.
-2. `infrastructure_agent` evaluates CPU, memory, queues, interface errors, and device state.
-3. `connectivity_agent` uses topology links and service status to infer the affected scope.
-4. `correlation_agent` combines the preceding structured messages, ranks causes, calculates an evidence score, and may return insufficient evidence.
-5. `reporting_agent` converts the correlated result into the challenge's unified JSON schema.
+## A typical diagnosis
 
-Messages are retained in order in the dashboard trace. Correlation receives only the three specialist messages and records their IDs. The report cites the originating message ID for each supporting evidence item. Invalid telemetry schema versions, unrecognized units, and out-of-range metrics produce warnings. Unknown measurements are discarded; absent data is not interpreted as healthy.
+1. The input adapter converts recognized units and vendor field names to the shared metric names.
+2. Performance, infrastructure, and connectivity specialists assess the readings they understand.
+3. The correlator compares the evidence and can ask a specialist a follow-up, such as whether CPU use is normal on a device.
+4. The report includes the likely cause, evidence, confidence score, other possibilities, and suggested checks.
 
-## MCP adapter
+Repeated readings of the same metric on the same device are counted once. Each evidence item may list possible causes and how well they fit. The correlator checks those suggestions against the measurements and fixed evidence rules. Optional Groq suggestions cannot directly set the final verdict.
 
-`mcp_server.py` exposes `list_demo_scenarios`, `diagnose_telemetry`, and `diagnose_demo_scenario` tools. Read-only resources `netcoop://protocol` and `netcoop://sample-dataset` expose this protocol and the synthetic fixture. The MCP server calls the same validator and orchestrator as the dashboard.
+## Send requests over HTTP
 
-## Confidence score
+Start the service with:
 
-Confidence is a deterministic evidence score, not a calibrated probability. Repeated `(device_id, timestamp, metrics)` records are deduplicated, and corroboration counts distinct devices and metrics. At least three distinct signals can support a diagnosis from one family, capped at 0.55. If two candidate scores are within 0.05, status is `ambiguous` and the report recommends a discriminating measurement. Confidence penalties and fixed-seed scenario results are documented in [`ACCURACY.md`](ACCURACY.md).
+```bash
+python -m netcoop.http_agents
+```
 
-## Optional model reviewer
+It listens on `127.0.0.1:8765` by default and accepts JSON at `/agents/performance`, `/agents/infrastructure`, `/agents/connectivity`, `/agents/correlation`, and `/agents/reporting`. To have the dashboard or CLI use this service, set `NETCOOP_AGENT_URL` to `http://127.0.0.1:8765` before starting it. This sends requests through HTTP between processes instead of calling every specialist directly in the same process.
 
-When explicitly enabled, `groq_review_agent` receives the consolidated diagnostic report and specialist findings. Its response is validated against the `model_review` JSON Schema and added as an advisory section. It cannot change the rule-based root cause or confidence. If the provider is unavailable or returns invalid data, the deterministic report remains intact and the model message is marked as a warning. No model call is made by default.
+The optional MCP (Model Context Protocol) server is started with `mcp run mcp_server.py` and offers tools for listing scenarios and running diagnoses.
+
+## Message fields
+
+| Field | What it means |
+|---|---|
+| `schema_version` | Version of this message format (`agent_message_v1`). |
+| `message_id` | Unique ID for this message. |
+| `timestamp` | When the message was created, in UTC. |
+| `message_type` | `finding`, `task_request`, `challenge`, or `ack`. |
+| `conversation_id` | ID shared by messages from one diagnosis. |
+| `in_reply_to` | ID of the message this one answers, or `null`. |
+| `capability_card` | Measurements and tasks the sender supports. |
+| `normalization` | Unit or field-name changes made to the input. |
+| `source_agent` / `target_agent` | Who sent the message and who should receive it. |
+| `status` | Whether the sender completed its work, had a warning, or failed. |
+| `findings` | Short explanations of what the agent found. |
+| `evidence` | Readings with device, metric, unit, interpretation, and possible causes. |
+| `received_message_ids` | IDs of earlier messages used for this reply. |
+| `limitations` | Missing or incompatible input that affects the result. |
+
+## Shared measurement names
+
+Agents use the same names and units: `latency_ms` (milliseconds), `jitter_ms` (milliseconds), `packet_loss_pct` (percent), `throughput_mbps` and `bandwidth_mbps` (Mbps), `link_utilization_pct`, `cpu_utilization_pct`, `memory_utilization_pct`, and `retransmissions_pct` (percent), `queue_drops` and `interface_errors` (counts), `signal_strength_dbm` (dBm), plus categorical `service_status` and `device_status`.
+
+The adapter recognizes aliases such as `ifInErrors`, `rssi`, and `cpuUsage`; it also converts seconds to milliseconds and bits per second to Mbps. Conversions are listed in each message. If a percentage might be a fraction from 0 to 1, the adapter converts it and lowers confidence slightly because the intent is unclear. Booleans and infinite values are rejected. Missing data is not treated as a healthy reading.
+
+## Confidence and validation
+
+Confidence is a score based on evidence rules, not a probability. Repeated `(device, metric)` pairs are removed before independent sources are counted. Sparse or conflicting evidence can lower the score, and close competing causes can produce an unclear result. The dashboard shows the score breakdown and labels at or above 75% High, at or above 45% Medium, and lower scores Low. The [audit report](ACCURACY.md) shows observed results on generated cases.
+
+Messages are checked against [`schema.json`](schema.json) when they are created and received. Invalid messages are rejected; diagnosis can continue with other valid messages. The dashboard replay preserves message order and shows the message IDs and any input conversions.
+
+## Who does what
+
+- `performance_agent` checks delay, jitter, packet loss, link use, throughput, and Wi-Fi quality.
+- `infrastructure_agent` checks CPU, memory, queue drops, interface errors, and device state.
+- `connectivity_agent` checks services and uses network links to map the affected area.
+- `correlation_agent` compares the specialists' evidence, ranks possible causes, and may ask a follow-up question.
+- `reporting_agent` turns the result into the final report.
+
+The MCP server also provides the message format and sample data as read-only resources. It uses the same input checks and diagnosis code as the dashboard.
